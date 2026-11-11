@@ -2,11 +2,11 @@ import { FolderKanban, Users } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/app/page-header";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOrg } from "@/server/auth/org";
 import { countMembers } from "@/server/services/organizations";
+import { listProjects } from "@/server/services/projects";
 
 import type { Metadata } from "next";
 
@@ -17,7 +17,10 @@ export async function generateMetadata({ params }: PageProps<"/[orgSlug]">): Pro
 
 export default async function OverviewPage({ params }: PageProps<"/[orgSlug]">) {
   const { user, org, role } = await requireOrg((await params).orgSlug);
-  const members = await countMembers(user.id, org.id);
+  const [members, projects] = await Promise.all([
+    countMembers(user.id, org.id),
+    listProjects({ userId: user.id, orgId: org.id }),
+  ]);
   const firstName = user.name.split(" ")[0] ?? user.name;
   const canInvite = role === "owner" || role === "admin";
 
@@ -53,11 +56,20 @@ export default async function OverviewPage({ params }: PageProps<"/[orgSlug]">) 
             <div className="mb-2 flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
               <FolderKanban className="size-4" aria-hidden />
             </div>
-            <CardTitle className="flex items-center gap-2">
-              Projects <Badge variant="secondary">Coming soon</Badge>
-            </CardTitle>
-            <CardDescription>Plan work on Kanban boards and in sprints.</CardDescription>
+            <CardTitle>Projects</CardTitle>
+            <CardDescription>
+              {projects.length === 0
+                ? "Plan work on Kanban boards."
+                : `${projects.length} active ${projects.length === 1 ? "project" : "projects"}.`}
+            </CardDescription>
           </CardHeader>
+          <CardFooter>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${org.slug}/projects`}>
+                {projects.length === 0 && canInvite ? "Create a project" : "Open projects"}
+              </Link>
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </div>
