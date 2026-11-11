@@ -8,6 +8,8 @@ import { boardColumns, member, projectMembers, projects, tasks, user } from "@/s
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { NotFoundError, ValidationError } from "@/server/errors";
 
+import { logActivity } from "./activity";
+
 import type { Scope } from "./scope";
 
 export interface Person {
@@ -147,6 +149,11 @@ export async function createProject(
         .insert(projectMembers)
         .values(memberIds.map((userId) => ({ projectId: project.id, orgId: scope.orgId, userId })));
     }
+    await logActivity(tx, scope, {
+      action: "project.created",
+      projectId: project.id,
+      metadata: { name: input.name },
+    });
     return project;
   });
 }
@@ -163,6 +170,11 @@ export async function updateProject(
       .where(and(eq(projects.id, projectId), eq(projects.orgId, scope.orgId)))
       .returning({ id: projects.id });
     if (updated.length === 0) throw new NotFoundError("This project no longer exists.");
+    await logActivity(tx, scope, {
+      action: "project.updated",
+      projectId,
+      metadata: { name: input.name },
+    });
   });
 }
 
@@ -177,8 +189,14 @@ export async function setProjectArchived(
       .update(projects)
       .set({ archivedAt: archived ? new Date() : null })
       .where(and(eq(projects.id, projectId), eq(projects.orgId, scope.orgId)))
-      .returning({ id: projects.id });
-    if (updated.length === 0) throw new NotFoundError("This project no longer exists.");
+      .returning({ id: projects.id, name: projects.name });
+    const [project] = updated;
+    if (!project) throw new NotFoundError("This project no longer exists.");
+    await logActivity(tx, scope, {
+      action: archived ? "project.archived" : "project.restored",
+      projectId,
+      metadata: { name: project.name },
+    });
   });
 }
 
@@ -229,12 +247,38 @@ export async function setProjectMembers(
 ): Promise<void> {
   await withOrgContext(scope, async (tx) => {
     const [project] = await tx
-      .select({ id: projects.id })
+      .select({ id: projects.id, name: projects.name })
       .from(projects)
       .where(and(eq(projects.id, projectId), eq(projects.orgId, scope.orgId)));
     if (!project) throw new NotFoundError("This project no longer exists.");
 
     const wanted = await assignableMemberIds(tx, scope.orgId, userIds);
+    const current = await tx
+      .select({ id: projectMembers.userId, name: user.name })
+      .from(projectMembers)
+      .innerJoin(user, eq(user.id, projectMembers.userId))
+      .where(eq(projectMembers.projectId, projectId));
+    const removed = current.filter((person) => !wanted.includes(person.id));
+    const addedIds = wanted.filter((id) => !current.some((person) => person.id === id));
+    if (removed.length === 0 && addedIds.length === 0) return;
+
+    const added =
+      addedIds.length === 0
+        ? []
+        : await tx
+            .select({ name: user.name })
+            .from(user)
+            .where(inArray(user.id, addedIds))
+            .orderBy(asc(user.name));
+    await logActivity(tx, scope, {
+      action: "project.members",
+      projectId,
+      metadata: {
+        name: project.name,
+        added: added.map((person) => person.name),
+        removed: removed.map((person) => person.name).sort(),
+      },
+    });
     await tx.delete(projectMembers).where(eq(projectMembers.projectId, projectId));
     if (wanted.length > 0) {
       await tx
