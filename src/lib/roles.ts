@@ -76,3 +76,21 @@ export function canRemoveMember(actor: Role, target: Role): boolean {
 export function canInvite(actor: Role, role: Role): boolean {
   return role !== "owner" && (actor === "owner" || actor === "admin");
 }
+
+/** Whether `role` may create, edit and archive projects and choose who's on them. */
+export function canManageProjects(role: Role): boolean {
+  return role === "owner" || role === "admin";
+}
+
+/**
+ * Whether `role` may create and edit tasks and columns in a project. Members need to be
+ * assigned to the project; clients never edit (they get a read-only portal in Phase 4).
+ */
+export function canEditProject(role: Role, assigned: boolean): boolean {
+  return canManageProjects(role) || (role === "member" && assigned);
+}
+
+/** Whether `role` may delete a task. Members can only delete tasks they created. */
+export function canDeleteTask(role: Role, assigned: boolean, createdIt: boolean): boolean {
+  return canManageProjects(role) || (role === "member" && assigned && createdIt);
+}

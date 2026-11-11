@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { canChangeRole, canInvite, canRemoveMember, isRole, ROLES, type Role } from "@/lib/roles";
+import {
+  canChangeRole,
+  canDeleteTask,
+  canEditProject,
+  canInvite,
+  canManageProjects,
+  canRemoveMember,
+  isRole,
+  ROLES,
+  type Role,
+} from "@/lib/roles";
 
 /** Every (actor, from, to) combination the matrix allows. Anything else must be refused. */
 const ALLOWED_ROLE_CHANGES = new Set([
@@ -65,4 +75,23 @@ describe("isRole", () => {
     expect(isRole("admin")).toBe(true);
     expect(isRole("superuser")).toBe(false);
   });
+});
+
+describe("project permissions", () => {
+  it.each([
+    // role, assigned, manage projects, edit tasks, delete own task, delete others' task
+    ["owner", false, true, true, true, true],
+    ["admin", false, true, true, true, true],
+    ["member", true, false, true, true, false],
+    ["member", false, false, false, false, false],
+    ["client", true, false, false, false, false],
+  ] as [Role, boolean, boolean, boolean, boolean, boolean][])(
+    "%s (assigned: %s)",
+    (role, assigned, manage, edit, deleteOwn, deleteOthers) => {
+      expect(canManageProjects(role)).toBe(manage);
+      expect(canEditProject(role, assigned)).toBe(edit);
+      expect(canDeleteTask(role, assigned, true)).toBe(deleteOwn);
+      expect(canDeleteTask(role, assigned, false)).toBe(deleteOthers);
+    },
+  );
 });
