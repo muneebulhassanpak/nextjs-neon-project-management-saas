@@ -10,6 +10,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ### Added
 
 - Landing page: hero, features, client portal and live board showcases, how it works, pricing, FAQ and footer, with sign-up and log-in links throughout. Works in light and dark mode and on mobile.
+- Redesigned sign-in, sign-up, password reset, onboarding and invitation pages, sharing the landing page's header. Includes a show/hide password toggle.
 - Sign up with email and password (with email verification) or a magic link; optional Google and GitHub sign-in.
 - Password reset by email.
 - Organizations: onboarding, an organization switcher and pages at `/[orgSlug]`.

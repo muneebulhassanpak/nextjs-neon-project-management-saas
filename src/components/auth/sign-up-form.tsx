@@ -1,15 +1,22 @@
 "use client";
 
+import { MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { textField } from "@/lib/form-data";
 import { safeNextPath } from "@/lib/routes";
 
+import {
+  AuthFooter,
+  AuthHeading,
+  authLinkClass,
+  authSubmitClass,
+  PasswordField,
+  TextField,
+} from "./fields";
 import { FormMessage } from "./form-message";
 import { SocialButtons, type SocialProvider } from "./social-buttons";
 import { SubmitButton } from "./submit-button";
@@ -37,72 +44,81 @@ export function SignUpForm({ providers }: { providers: SocialProvider[] }) {
 
   if (sentTo) {
     return (
-      <div className="grid gap-3 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Check your inbox</h1>
-        <p className="text-sm text-muted-foreground">
-          We sent a verification link to{" "}
-          <span className="font-medium text-foreground">{sentTo}</span>. Click it to finish creating
-          your account.
-        </p>
+      <div className="grid gap-6">
+        <AuthHeading
+          icon={<MailCheck className="size-5" aria-hidden />}
+          title="Check your inbox"
+          description={
+            <>
+              We sent a verification link to{" "}
+              <span className="font-medium text-foreground">{sentTo}</span>. Click it to finish
+              creating your account.
+            </>
+          }
+        />
+        <AuthFooter>
+          Wrong address?{" "}
+          <button
+            type="button"
+            className={authLinkClass}
+            onClick={() => {
+              setSentTo(null);
+            }}
+          >
+            Start over
+          </button>
+        </AuthFooter>
       </div>
     );
   }
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-        <p className="text-sm text-muted-foreground">Start managing projects with your team</p>
-      </div>
+      <AuthHeading
+        title="Create your account"
+        description="Free to start. Set up your workspace in a minute."
+      />
 
       <SocialButtons providers={providers} callbackURL={next} />
 
       <form action={signUp} className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="name">Full name</Label>
-          <Input id="name" name="name" autoComplete="name" required maxLength={100} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="email">Work email</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            defaultValue={invitedEmail}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            required
-            aria-describedby="password-hint"
-          />
-          <p id="password-hint" className="text-xs text-muted-foreground">
-            At least 8 characters.
-          </p>
-        </div>
+        <TextField
+          label="Full name"
+          name="name"
+          autoComplete="name"
+          placeholder="Jane Cooper"
+          required
+          maxLength={100}
+        />
+        <TextField
+          label="Work email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          required
+          defaultValue={invitedEmail}
+        />
+        <PasswordField
+          label="Password"
+          name="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          hint="At least 8 characters."
+        />
 
         {error && <FormMessage>{error}</FormMessage>}
 
-        <SubmitButton>Create account</SubmitButton>
+        <SubmitButton className={authSubmitClass}>Create account</SubmitButton>
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <AuthFooter>
         Already have an account?{" "}
-        <Link
-          href="/sign-in"
-          className="font-medium text-foreground underline-offset-4 hover:underline"
-        >
+        <Link href="/sign-in" className={authLinkClass}>
           Sign in
         </Link>
-      </p>
+      </AuthFooter>
     </div>
   );
 }
