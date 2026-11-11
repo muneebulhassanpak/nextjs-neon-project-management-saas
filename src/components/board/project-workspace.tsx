@@ -10,7 +10,6 @@ import { BoardContext, useBoard, useBoardContext, type BoardContextValue } from 
 import { BoardView } from "./board-view";
 import { FilterBar, filterTasks, NO_FILTERS, type TaskFilters } from "./filters";
 import { ListView } from "./list-view";
-import { QueryProvider } from "./query-provider";
 import { TaskSheet } from "./task-sheet";
 
 /** The board and list views of a project, with filters and the task sheet. */
@@ -22,11 +21,9 @@ export function ProjectWorkspace({
   initialBoard: Board;
 }) {
   return (
-    <QueryProvider>
-      <BoardContext value={context}>
-        <Workspace initialBoard={initialBoard} />
-      </BoardContext>
-    </QueryProvider>
+    <BoardContext value={context}>
+      <Workspace initialBoard={initialBoard} />
+    </BoardContext>
   );
 }
 
