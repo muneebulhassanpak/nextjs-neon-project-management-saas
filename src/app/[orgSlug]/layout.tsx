@@ -1,0 +1,40 @@
+import { Suspense } from "react";
+
+import { AppSidebar } from "@/components/app/app-sidebar";
+import { SidebarFallback } from "@/components/app/sidebar-fallback";
+import { Separator } from "@/components/ui/separator";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { requireOrg } from "@/server/auth/org";
+import { listMemberships } from "@/server/services/organizations";
+
+export default function OrgLayout({ children, params }: LayoutProps<"/[orgSlug]">) {
+  return (
+    <SidebarProvider>
+      {/* The session is read inside a boundary, so the page shell renders without waiting. */}
+      <Suspense fallback={<SidebarFallback />}>
+        <OrgSidebar params={params} />
+      </Suspense>
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+        </header>
+        <div className="mx-auto w-full max-w-5xl flex-1 p-6">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+async function OrgSidebar({ params }: Pick<LayoutProps<"/[orgSlug]">, "params">) {
+  const { orgSlug } = await params;
+  const { user, org, role } = await requireOrg(orgSlug);
+  const memberships = await listMemberships(user.id);
+
+  return (
+    <AppSidebar
+      current={{ ...org, role }}
+      orgs={memberships.map((m) => ({ ...m.org, role: m.role }))}
+      user={{ name: user.name, email: user.email, image: user.image }}
+    />
+  );
+}
