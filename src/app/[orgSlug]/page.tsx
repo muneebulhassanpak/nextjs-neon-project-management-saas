@@ -1,9 +1,17 @@
 import { FolderKanban, Users } from "lucide-react";
 import Link from "next/link";
 
+import { ActivityFeed } from "@/components/activity/activity-feed";
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { requireOrg } from "@/server/auth/org";
 import { countMembers } from "@/server/services/organizations";
 import { listProjects } from "@/server/services/projects";
@@ -72,6 +80,27 @@ export default async function OverviewPage({ params }: PageProps<"/[orgSlug]">) 
           </CardFooter>
         </Card>
       </div>
+
+      {/* Clients only see their shared tasks (Phase 4), not the team's activity. */}
+      {role !== "client" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+            <CardDescription>
+              {canInvite
+                ? "What's changed across the organization."
+                : "What's changed in your projects."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActivityFeed
+              orgId={org.id}
+              orgSlug={org.slug}
+              empty="Once people start working, their changes show up here."
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

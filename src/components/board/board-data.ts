@@ -91,7 +91,10 @@ export function useBoardMutation<V, T>(
     },
     onSettled: async () => {
       if (queryClient.isMutating({ mutationKey }) === 1) {
-        await queryClient.invalidateQueries({ queryKey: key });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: key }),
+          queryClient.invalidateQueries({ queryKey: ["activity"] }),
+        ]);
       }
     },
   });

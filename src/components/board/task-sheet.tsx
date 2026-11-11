@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { CalendarDays, Plus, Tag, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
+import { ActivityFeed } from "@/components/activity/activity-feed";
 import { PersonAvatar } from "@/components/projects/people";
 import {
   AlertDialog,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { TASK_PRIORITIES, TASK_PRIORITY_LABELS, type TaskPriority } from "@/lib/projects";
@@ -64,6 +66,7 @@ import {
 } from "./board-data";
 import { DescriptionEditor } from "./description-editor";
 import { LabelChip, labelDot } from "./label-chip";
+import { CAPTURES_ESCAPE, TaskComments, useComments } from "./task-comments";
 import { formatDueDate, PriorityIcon } from "./task-meta";
 
 export function TaskSheet({
@@ -82,7 +85,15 @@ export function TaskSheet({
         if (!open) onClose();
       }}
     >
-      <SheetContent className="w-full gap-0 overflow-y-auto data-[side=right]:sm:max-w-xl">
+      <SheetContent
+        className="w-full gap-0 overflow-y-auto data-[side=right]:sm:max-w-xl"
+        onEscapeKeyDown={(event) => {
+          // Escape first closes the mention list or cancels a comment edit.
+          if (event.target instanceof Element && event.target.closest(`[${CAPTURES_ESCAPE}]`)) {
+            event.preventDefault();
+          }
+        }}
+      >
         {taskId && <TaskPanel key={taskId} taskId={taskId} board={board} onClose={onClose} />}
       </SheetContent>
     </Sheet>
@@ -102,6 +113,7 @@ function TaskPanel({
   const queryClient = useQueryClient();
   const task = board.tasks.find((t) => t.id === taskId);
   const detail = useTaskDetail(taskId);
+  const comments = useComments(taskId);
 
   const update = useBoardMutation(updateTaskAction, (current, { changes }) =>
     patchTask(current, taskId, toBoardPatch(current, changes)),
@@ -206,6 +218,30 @@ function TaskPanel({
           <Skeleton className="h-28 w-full" />
         )}
       </div>
+
+      <Tabs defaultValue="comments" className="gap-4 border-t p-6">
+        <TabsList variant="line" className="-ml-1.5">
+          <TabsTrigger value="comments">
+            Comments
+            {comments.data && comments.data.length > 0 && (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {comments.data.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+        <TabsContent value="comments">
+          <TaskComments taskId={taskId} people={board.people} />
+        </TabsContent>
+        <TabsContent value="activity">
+          <ActivityFeed
+            orgId={orgId}
+            filter={{ taskId }}
+            empty="Changes to this task will show up here."
+          />
+        </TabsContent>
+      </Tabs>
 
       <div className="mt-auto flex items-center justify-between gap-4 border-t px-6 py-4 text-xs text-muted-foreground">
         <span>
