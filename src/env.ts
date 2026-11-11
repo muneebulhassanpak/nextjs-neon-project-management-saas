@@ -1,9 +1,15 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+import { LOCAL_DATABASE_URL } from "@/server/db/url";
+
+// On Vercel every setting that reaches real data must be set explicitly: a missing
+// DATABASE_URL must fail the deploy, not silently fall back to a local default.
+const onVercel = Boolean(process.env.VERCEL);
+
 /**
  * Every setting is validated at startup, so a bad config fails fast instead of at first use.
- * Settings have safe local defaults; production must set secrets explicitly.
+ * Settings have safe local defaults; deployed environments must set secrets explicitly.
  */
 export const env = createEnv({
   server: {
@@ -12,7 +18,7 @@ export const env = createEnv({
       .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
       .default("info"),
     // Any Postgres URL: local Docker, a Neon branch, or Neon production.
-    DATABASE_URL: z.url().default("postgresql://stackboard:stackboard@localhost:5433/stackboard"),
+    DATABASE_URL: onVercel ? z.url() : z.url().default(LOCAL_DATABASE_URL),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
