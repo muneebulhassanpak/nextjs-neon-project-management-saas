@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 
 import { PillLink } from "./primitives";
+import { SectionNav } from "./section-nav";
 
 // Absolute (`/#…`) so they also work from the auth pages.
 export const SECTION_LINKS = [
@@ -41,21 +42,11 @@ export function SiteHeader({ minimal = false }: { minimal?: boolean }) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-transparent bg-background/70 backdrop-blur-lg supports-[backdrop-filter]:bg-background/50">
+    <header className="lp-header sticky top-0 z-40 border-b border-transparent bg-background/70 backdrop-blur-lg supports-[backdrop-filter]:bg-background/50">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Logo />
 
-        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-          {SECTION_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        <SectionNav links={SECTION_LINKS} />
 
         <div className="flex items-center gap-1">
           <ThemeToggle />
