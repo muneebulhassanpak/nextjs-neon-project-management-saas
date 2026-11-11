@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink, organization } from "better-auth/plugins";
 
 import { env } from "@/env";
+import { orgSlugSchema } from "@/lib/organization";
 import { ac, roles } from "@/lib/roles";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
@@ -55,6 +56,8 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
+    // Signing in before verifying sends a fresh link instead of a dead end.
+    sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       await emailSender.send(emails.verifyEmail(user.email, url));
@@ -87,6 +90,15 @@ export const auth = betterAuth({
       invitationExpiresIn: 7 * 24 * 60 * 60,
       cancelPendingInvitationsOnReInvite: true,
       requireEmailVerificationOnInvitation: true,
+      organizationHooks: {
+        // The same slug rules as the app's forms, for requests that reach the API directly.
+        beforeCreateOrganization: ({ organization: org }) => {
+          if (!orgSlugSchema.safeParse(org.slug).success) {
+            throw new APIError("BAD_REQUEST", { message: "This URL isn't available." });
+          }
+          return Promise.resolve();
+        },
+      },
       sendInvitationEmail: async ({ email, role, organization: org, inviter, id }) => {
         const url = `${appUrl}/invitations/${id}`;
         await emailSender.send(
