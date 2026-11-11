@@ -1,7 +1,8 @@
-import { Mail } from "lucide-react";
+import { Building2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { AuthHeading } from "@/components/auth/fields";
 import { CreateOrganizationForm } from "@/components/orgs/create-organization-form";
 import { Button } from "@/components/ui/button";
 import { ROLE_LABELS, isRole } from "@/lib/roles";
@@ -18,12 +19,11 @@ export default function OnboardingPage() {
       <Suspense>
         <PendingInvitations />
       </Suspense>
-      <div className="grid gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your organization</h1>
-        <p className="text-sm text-muted-foreground">
-          An organization holds your projects, team and clients.
-        </p>
-      </div>
+      <AuthHeading
+        icon={<Building2 className="size-5" aria-hidden />}
+        title="Create your organization"
+        description="An organization holds your projects, team and clients. You can rename it later."
+      />
       <CreateOrganizationForm />
     </div>
   );
@@ -37,7 +37,10 @@ async function PendingInvitations() {
   if (invitations.length === 0) return null;
 
   return (
-    <section className="grid gap-3 rounded-lg border p-4" aria-labelledby="invites-heading">
+    <section
+      className="grid gap-3 rounded-2xl border bg-muted/40 p-4"
+      aria-labelledby="invites-heading"
+    >
       <h2 id="invites-heading" className="flex items-center gap-2 text-sm font-medium">
         <Mail className="size-4 text-primary" aria-hidden /> You&apos;ve been invited
       </h2>
@@ -53,7 +56,7 @@ async function PendingInvitations() {
                 </span>
               )}
             </span>
-            <Button asChild size="sm" variant="outline">
+            <Button asChild size="sm" variant="outline" className="rounded-full">
               <Link href={`/invitations/${invite.id}`}>View</Link>
             </Button>
           </li>

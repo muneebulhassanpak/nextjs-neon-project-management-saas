@@ -1,6 +1,8 @@
+import { MailOpen } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { AuthHeading, authSubmitClass } from "@/components/auth/fields";
 import { InvitationResponse } from "@/components/members/invitation-response";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,8 +24,8 @@ export default function InvitationPage({ params }: PageProps<"/invitations/[id]"
 
 function Message({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-3 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+    <div className="grid gap-4">
+      <AuthHeading icon={<MailOpen className="size-5" aria-hidden />} title={title} />
       <div className="grid gap-4 text-sm text-muted-foreground">{children}</div>
     </div>
   );
@@ -65,14 +67,14 @@ async function Invitation({ params }: Pick<PageProps<"/invitations/[id]">, "para
       <Message title={`Join ${invitation.organizationName}`}>
         {intro}
         <div className="grid gap-2">
-          <Button asChild>
+          <Button asChild className={authSubmitClass}>
             <Link
               href={`/sign-up?next=${encodeURIComponent(next)}&email=${encodeURIComponent(invitation.email)}`}
             >
               Create an account
             </Link>
           </Button>
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="h-10 rounded-full">
             <Link href={`/sign-in?next=${encodeURIComponent(next)}`}>
               I already have an account
             </Link>

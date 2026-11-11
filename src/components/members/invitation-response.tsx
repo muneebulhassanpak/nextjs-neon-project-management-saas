@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { authSubmitClass } from "@/components/auth/fields";
 import { Button } from "@/components/ui/button";
 import { acceptInvitation, declineInvitation } from "@/server/actions/invitations";
 
@@ -18,6 +19,7 @@ export function InvitationResponse({
   return (
     <div className="grid gap-2">
       <Button
+        className={authSubmitClass}
         disabled={isPending}
         onClick={() => {
           startTransition(async () => {
@@ -30,6 +32,7 @@ export function InvitationResponse({
       </Button>
       <Button
         variant="ghost"
+        className="h-10 rounded-full"
         disabled={isPending}
         onClick={() => {
           startTransition(async () => {

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { authSubmitClass } from "@/components/auth/fields";
 import { FormMessage } from "@/components/auth/form-message";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ export function CreateOrganizationForm() {
           placeholder="Acme Design"
           required
           maxLength={50}
+          className="h-10 rounded-xl bg-background px-3.5 shadow-xs dark:bg-input/30"
           value={name}
           aria-invalid={Boolean(fieldErrors?.name)}
           onChange={(e) => {
@@ -38,8 +40,8 @@ export function CreateOrganizationForm() {
 
       <div className="grid gap-2">
         <Label htmlFor="slug">URL</Label>
-        <div className="flex items-center rounded-md border border-input focus-within:ring-[3px] focus-within:ring-ring/50">
-          <span className="border-r px-3 text-sm text-muted-foreground">stackboard/</span>
+        <div className="flex h-10 items-center rounded-xl border border-input bg-background shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30">
+          <span className="border-r px-3.5 text-sm text-muted-foreground">stackboard/</span>
           <Input
             id="slug"
             name="slug"
@@ -67,7 +69,7 @@ export function CreateOrganizationForm() {
 
       {state?.ok === false && !fieldErrors && <FormMessage>{state.error.message}</FormMessage>}
 
-      <SubmitButton>Create organization</SubmitButton>
+      <SubmitButton className={authSubmitClass}>Create organization</SubmitButton>
     </form>
   );
 }
