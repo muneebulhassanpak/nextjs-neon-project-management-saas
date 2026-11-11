@@ -58,11 +58,40 @@ export class PlanLimitError extends AppError {
   override readonly code = "plan_limit";
 }
 
+/** The Postgres error code (SQLSTATE) of a database error, which Drizzle wraps in `cause`. */
+export function pgErrorCode(error: unknown): string | undefined {
+  for (let e: unknown = error; e && typeof e === "object"; e = (e as { cause?: unknown }).cause) {
+    const code = (e as { code?: unknown }).code;
+    if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return code;
+  }
+  return undefined;
+}
+
+/**
+ * Database refusals that mean "you can't do that" rather than "something broke": row-level
+ * security blocking a write, and unique or foreign key violations.
+ */
+function fromDatabaseError(error: unknown): AppError | undefined {
+  switch (pgErrorCode(error)) {
+    case "42501":
+      return new ForbiddenError("You don't have access to do that.");
+    case "23505":
+      return new ConflictError("That already exists.");
+    case "23503":
+      return new ConflictError(
+        "Something this depends on was changed or removed. Refresh and try again.",
+      );
+    default:
+      return undefined;
+  }
+}
+
 /** Turns any thrown value into the standard error body. Unexpected errors never leak details. */
 export function toErrorBody(
-  error: unknown,
+  thrown: unknown,
   requestId?: string,
 ): { status: number; body: ErrorBody } {
+  const error = fromDatabaseError(thrown) ?? thrown;
   if (error instanceof AppError) {
     return {
       status: error.status,
