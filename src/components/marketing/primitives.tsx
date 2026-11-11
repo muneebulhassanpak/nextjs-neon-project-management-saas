@@ -19,7 +19,7 @@ export function PillLink({
     <Link
       href={href}
       className={cn(
-        "group inline-flex h-10 items-center gap-2 rounded-full pr-1.5 pl-5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        "group inline-flex h-10 items-center gap-2 rounded-full pr-1.5 pl-5 text-sm font-medium transition-[color,background-color,scale] duration-150 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:transition-colors motion-reduce:active:scale-100",
         variant === "solid"
           ? "bg-foreground text-background hover:bg-foreground/85"
           : "border bg-background/60 text-foreground backdrop-blur hover:bg-muted",
@@ -27,13 +27,21 @@ export function PillLink({
       )}
     >
       {children}
+      {/* On hover the arrow slides out to the right and a new one slides in from the left. */}
       <span
         className={cn(
-          "flex size-7 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none",
+          "relative flex size-7 items-center justify-center overflow-hidden rounded-full",
           variant === "solid" ? "bg-background text-foreground" : "bg-foreground text-background",
         )}
       >
-        <ArrowRight className="size-3.5" aria-hidden />
+        <ArrowRight
+          className="size-3.5 transition-transform duration-300 ease-smooth group-hover:translate-x-6 motion-reduce:transition-none"
+          aria-hidden
+        />
+        <ArrowRight
+          className="absolute size-3.5 -translate-x-6 transition-transform duration-300 ease-smooth group-hover:translate-x-0 motion-reduce:transition-none"
+          aria-hidden
+        />
       </span>
     </Link>
   );
@@ -61,7 +69,7 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4",
+        "lp-reveal flex flex-col gap-4",
         align === "center" ? "mx-auto max-w-2xl items-center text-center" : "items-start",
       )}
     >
@@ -107,10 +115,12 @@ export function FakeAvatar({
   name,
   className,
   color = 0,
+  style,
 }: {
   name: string;
   className?: string;
   color?: number;
+  style?: React.CSSProperties;
 }) {
   const initials = name
     .split(" ")
@@ -119,6 +129,7 @@ export function FakeAvatar({
     .slice(0, 2);
   return (
     <span
+      style={style}
       className={cn(
         "inline-flex size-7 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-semibold ring-2 ring-card",
         AVATAR_COLORS[color % AVATAR_COLORS.length],

@@ -47,19 +47,20 @@ export function Pricing() {
           description="Start free. Upgrade when your team or client list outgrows it."
         />
         <div className="mx-auto mt-14 grid max-w-3xl gap-4 md:grid-cols-2">
-          {PLANS.map((plan) => (
+          {PLANS.map((plan, index) => (
             <article
               key={plan.name}
+              style={{ "--i": index } as React.CSSProperties}
               className={cn(
-                "flex flex-col rounded-3xl border bg-card p-8",
+                "lp-reveal flex flex-col rounded-3xl border bg-card p-8",
                 plan.featured &&
-                  "border-amber-300 bg-gradient-to-b from-amber-50 to-card shadow-xl shadow-amber-500/10 dark:border-amber-500/30 dark:from-amber-500/10",
+                  "border-amber-300 bg-gradient-to-b from-amber-50 to-card shadow-xl shadow-amber-500/10 transition-[translate,box-shadow] duration-300 ease-smooth hover:-translate-y-1 hover:shadow-2xl hover:shadow-amber-500/25 motion-reduce:hover:translate-y-0 dark:border-amber-500/30 dark:from-amber-500/10",
               )}
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">{plan.name}</h3>
                 {plan.featured && (
-                  <span className="rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-medium text-amber-950">
+                  <span className="lp-shine relative overflow-hidden rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-medium text-amber-950">
                     Most popular
                   </span>
                 )}
@@ -70,7 +71,7 @@ export function Pricing() {
                 <span className="text-sm text-muted-foreground">{plan.period}</span>
               </p>
               <ul className="mt-8 flex flex-1 flex-col gap-3">
-                {plan.features.map((feature) => (
+                {plan.features.map((feature, featureIndex) => (
                   <li key={feature} className="flex items-start gap-3 text-sm">
                     <span
                       className={cn(
@@ -78,7 +79,11 @@ export function Pricing() {
                         plan.featured ? "bg-amber-400 text-amber-950" : "bg-muted",
                       )}
                     >
-                      <Check className="size-3" aria-hidden />
+                      <Check
+                        className="lp-draw size-3"
+                        style={{ "--i": featureIndex } as React.CSSProperties}
+                        aria-hidden
+                      />
                     </span>
                     {feature}
                   </li>
