@@ -93,6 +93,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:18-alpine
@@ -106,7 +107,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - run: pnpm exec playwright install --with-deps chromium
+      # The runner sometimes can't reach the Ubuntu package mirror, and apt then hangs on DNS
+      # timeouts. Give it five minutes, then install just the browser: the runner image already
+      # has Chrome's system libraries.
+      - name: Install Chromium
+        run: |
+          timeout 300 pnpm exec playwright install --with-deps chromium \
+            || pnpm exec playwright install chromium
       - run: pnpm db:migrate
       - run: pnpm build
       - run: pnpm test:e2e
