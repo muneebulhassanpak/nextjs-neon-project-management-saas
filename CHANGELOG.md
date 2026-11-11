@@ -9,6 +9,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Comments on tasks, with @mentions picked from a suggestion list. Authors edit and delete their own comments; owners and admins can remove any.
+- An activity log that records who changed what, shown on each task, on each project and (for everyone but clients) on the overview. Older entries load on demand.
+- In-app notifications for mentions and assignments, in a bell in the header that checks for new ones every 30 seconds. Each opens the task it's about.
+- Task links (`?task=`) that open the task panel directly.
+- Row-level security for comments, the activity log and notifications: people only see them for tasks and projects they can see, and only their own notifications.
+
 - Projects: owners and admins create, edit, archive and restore projects and choose which members are on them. Members only see the projects they're added to.
 - Kanban boards: drag tasks within and between columns (mouse or keyboard), with the new order saved instantly and kept after a reload. Add, rename, reorder and delete columns.
 - Tasks: title, rich-text description, assignee, priority, due date and labels, edited in a side panel. Members can delete the tasks they created.
@@ -49,3 +55,4 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ### Fixed
 
 - Neon connection strings use `sslmode=verify-full`, which silences the `pg` SSL warning and keeps strict certificate checks.
+- A hydration warning on the board (drag-and-drop ids differed between the server and the browser).
