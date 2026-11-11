@@ -9,6 +9,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Projects: owners and admins create, edit, archive and restore projects and choose which members are on them. Members only see the projects they're added to.
+- Kanban boards: drag tasks within and between columns (mouse or keyboard), with the new order saved instantly and kept after a reload. Add, rename, reorder and delete columns.
+- Tasks: title, rich-text description, assignee, priority, due date and labels, edited in a side panel. Members can delete the tasks they created.
+- A list view of every task, and filters by text, assignee, priority and label.
+- Row-level security for projects, columns, tasks and labels, with tests proving members can't reach projects they aren't on.
 - Landing page: hero, features, client portal and live board showcases, how it works, pricing, FAQ and footer, with sign-up and log-in links throughout. Works in light and dark mode and on mobile.
 - Redesigned sign-in, sign-up, password reset, onboarding and invitation pages, sharing the landing page's header. Includes a show/hide password toggle.
 - Sign up with email and password (with email verification) or a magic link; optional Google and GitHub sign-in.
