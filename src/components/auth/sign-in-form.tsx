@@ -4,17 +4,29 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { textField } from "@/lib/form-data";
 import { safeNextPath } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
+import {
+  AuthFooter,
+  AuthHeading,
+  authLinkClass,
+  authSubmitClass,
+  PasswordField,
+  TextField,
+} from "./fields";
 import { FormMessage } from "./form-message";
 import { SocialButtons, type SocialProvider } from "./social-buttons";
 import { SubmitButton } from "./submit-button";
 
 type Mode = "password" | "link";
+
+const MODES: { value: Mode; label: string }[] = [
+  { value: "password", label: "Password" },
+  { value: "link", label: "Email link" },
+];
 
 export function SignInForm({ providers }: { providers: SocialProvider[] }) {
   const router = useRouter();
@@ -53,69 +65,85 @@ export function SignInForm({ providers }: { providers: SocialProvider[] }) {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your Stackboard account</p>
-      </div>
+      <AuthHeading title="Welcome back" description="Sign in to your Stackboard account." />
 
       <SocialButtons providers={providers} callbackURL={next} />
 
-      <form action={signIn} className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
-        </div>
+      <div
+        role="group"
+        aria-label="Sign-in method"
+        className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1"
+      >
+        {MODES.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={mode === option.value}
+            onClick={() => {
+              setMode(option.value);
+              setError(null);
+              setNotice(null);
+            }}
+            className={cn(
+              "h-8 rounded-full text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              mode === option.value
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
 
-        {mode === "password" && (
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+      <form action={signIn} className="grid gap-4">
+        <TextField
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          required
+        />
+
+        {mode === "password" ? (
+          <PasswordField
+            label="Password"
+            name="password"
+            autoComplete="current-password"
+            required
+            aside={
               <Link
                 href="/forgot-password"
-                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
                 Forgot password?
               </Link>
-            </div>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
+            }
+          />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            We&apos;ll email you a link that signs you in, no password needed.
+          </p>
         )}
 
         {error && <FormMessage>{error}</FormMessage>}
         {notice && <FormMessage variant="success">{notice}</FormMessage>}
 
-        <SubmitButton>{mode === "password" ? "Sign in" : "Email me a sign-in link"}</SubmitButton>
+        <SubmitButton className={authSubmitClass}>
+          {mode === "password" ? "Sign in" : "Email me a sign-in link"}
+        </SubmitButton>
       </form>
 
-      <button
-        type="button"
-        className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        onClick={() => {
-          setMode(mode === "password" ? "link" : "password");
-          setError(null);
-          setNotice(null);
-        }}
-      >
-        {mode === "password"
-          ? "Sign in with an email link instead"
-          : "Sign in with a password instead"}
-      </button>
-
-      <p className="text-center text-sm text-muted-foreground">
+      <AuthFooter>
         New to Stackboard?{" "}
         <Link
           href={`/sign-up${next === "/dashboard" ? "" : `?next=${encodeURIComponent(next)}`}`}
-          className="font-medium text-foreground underline-offset-4 hover:underline"
+          className={authLinkClass}
         >
           Create an account
         </Link>
-      </p>
+      </AuthFooter>
     </div>
   );
 }

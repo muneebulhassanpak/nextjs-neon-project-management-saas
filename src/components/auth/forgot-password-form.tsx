@@ -1,13 +1,13 @@
 "use client";
 
+import { ArrowLeft, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { textField } from "@/lib/form-data";
 
+import { AuthHeading, authSubmitClass, TextField } from "./fields";
 import { FormMessage } from "./form-message";
 import { SubmitButton } from "./submit-button";
 
@@ -27,12 +27,11 @@ export function ForgotPasswordForm() {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Reset your password</h1>
-        <p className="text-sm text-muted-foreground">
-          We&apos;ll email you a link to choose a new one
-        </p>
-      </div>
+      <AuthHeading
+        icon={<KeyRound className="size-5" aria-hidden />}
+        title="Reset your password"
+        description="Enter your email and we'll send you a link to choose a new one."
+      />
 
       {sent ? (
         // Same message whether or not the account exists, so emails can't be probed.
@@ -41,20 +40,24 @@ export function ForgotPasswordForm() {
         </FormMessage>
       ) : (
         <form action={requestReset} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required />
-          </div>
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@company.com"
+            required
+          />
           {error && <FormMessage>{error}</FormMessage>}
-          <SubmitButton>Send reset link</SubmitButton>
+          <SubmitButton className={authSubmitClass}>Send reset link</SubmitButton>
         </form>
       )}
 
       <Link
         href="/sign-in"
-        className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        Back to sign in
+        <ArrowLeft className="size-3.5" aria-hidden /> Back to sign in
       </Link>
     </div>
   );

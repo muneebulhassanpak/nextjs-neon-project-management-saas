@@ -1,14 +1,14 @@
 "use client";
 
+import { KeyRound, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { textField } from "@/lib/form-data";
 
+import { AuthHeading, authLinkClass, authSubmitClass, PasswordField } from "./fields";
 import { FormMessage } from "./form-message";
 import { SubmitButton } from "./submit-button";
 
@@ -20,13 +20,13 @@ export function ResetPasswordForm() {
 
   if (!token || params.get("error")) {
     return (
-      <div className="grid gap-4 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Link expired</h1>
-        <p className="text-sm text-muted-foreground">This reset link is invalid or has expired.</p>
-        <Link
-          href="/forgot-password"
-          className="text-sm font-medium underline-offset-4 hover:underline"
-        >
+      <div className="grid gap-6">
+        <AuthHeading
+          icon={<TriangleAlert className="size-5" aria-hidden />}
+          title="Link expired"
+          description="This reset link is invalid or has expired."
+        />
+        <Link href="/forgot-password" className={`text-sm ${authLinkClass}`}>
           Request a new link
         </Link>
       </div>
@@ -45,23 +45,22 @@ export function ResetPasswordForm() {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
-      </div>
+      <AuthHeading
+        icon={<KeyRound className="size-5" aria-hidden />}
+        title="Choose a new password"
+        description="You'll use it the next time you sign in."
+      />
       <form action={reset} className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="password">New password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            required
-          />
-        </div>
+        <PasswordField
+          label="New password"
+          name="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          hint="At least 8 characters."
+        />
         {error && <FormMessage>{error}</FormMessage>}
-        <SubmitButton>Update password</SubmitButton>
+        <SubmitButton className={authSubmitClass}>Update password</SubmitButton>
       </form>
     </div>
   );
