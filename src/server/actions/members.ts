@@ -20,7 +20,8 @@ import { runAction } from "./run-action";
 
 const inviteSchema = z.object({
   organizationId: z.string().min(1),
-  email: z.email("Enter a valid email address.").trim().toLowerCase(),
+  // Trim before validating: pasted addresses often carry a trailing space.
+  email: z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address.")),
   role: z.enum(INVITABLE_ROLES, "Choose a role."),
 });
 
