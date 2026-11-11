@@ -35,3 +35,81 @@ To fix an earlier commit on your branch, use `git commit --fixup=<sha>` and then
 - Schema changes include a Drizzle migration and RLS policies for tenant-scoped tables.
 - UI changes are checked in light and dark mode, and on mobile.
 - `CHANGELOG.md` is updated under `Unreleased`.
+
+## Local setup
+
+Requirements: Node.js 22 (see `.nvmrc`), [pnpm](https://pnpm.io) 10 and Docker.
+
+```bash
+cp .env.example .env.local     # every value has a local default; fill in only what you need
+pnpm install                   # also installs the pre-commit hooks
+pnpm db:up                     # start Postgres in Docker (port 5433) and wait until it's ready
+pnpm db:migrate                # apply migrations
+pnpm dev                       # http://localhost:3000
+```
+
+Check it works: `curl localhost:3000/api/health` should return `{"status":"ok","database":"ok"}`.
+
+> Commands use `DATABASE_URL` from `.env.local`. Empty means the local Docker database. If it points at a Neon branch, `pnpm db:migrate` and the app act on that branch.
+
+Compose publishes Postgres on host port **5433** so it doesn't clash with a local Postgres. Change it with `POSTGRES_HOST_PORT`.
+
+## Checks
+
+These are the same commands CI runs:
+
+```bash
+pnpm lint                      # ESLint (strict, type-aware), zero warnings allowed
+pnpm format:check              # Prettier
+pnpm typecheck                 # route types + tsc
+pnpm test:coverage             # unit + integration tests; needs `pnpm db:up`
+pnpm build && pnpm test:e2e    # Playwright against the production build
+```
+
+The pre-commit hook runs ESLint, Prettier and the type check on every commit.
+
+- **Unit tests** (`tests/unit/`) need no services.
+- **Integration tests** (`tests/integration/`) run against a fresh `stackboard_test` database (`TEST_DATABASE_URL`) that is dropped and recreated on every run. They never use `DATABASE_URL`.
+- Coverage below 85% on `src/server` fails the run, and so does any unexpected `console.error`.
+
+## Code layout
+
+| Path                       | Holds                                                                 |
+| -------------------------- | --------------------------------------------------------------------- |
+| `src/app/`                 | Routes, layouts and pages only. Thin, no business logic               |
+| `src/components/`          | UI components (`ui/` holds the shadcn/ui primitives)                  |
+| `src/server/actions/`      | Server Actions: validate input, check auth and role, call a service   |
+| `src/server/services/`     | Use cases (create task, start sprint, invite member)                  |
+| `src/server/domain/`       | Pure business rules with no I/O (permissions, status transitions)     |
+| `src/server/db/`           | Drizzle client and schema                                             |
+| `src/server/integrations/` | Adapters for outside systems (email, billing, storage, AI, real-time) |
+| `src/server/errors.ts`     | `AppError` classes and the one error format                           |
+| `src/env.ts`               | Validated settings. Add every new setting here and to `.env.example`  |
+| `tests/`, `e2e/`           | Vitest and Playwright tests                                           |
+
+## Errors
+
+Every error response has the same shape:
+
+```json
+{ "error": { "code": "not_found", "message": "Project not found", "requestId": "…" } }
+```
+
+Throw an `AppError` subclass (`NotFoundError`, `ForbiddenError`, …) and wrap Route Handlers in `withErrorHandling`. Server Actions return `ActionResult<T>` instead of throwing. Unexpected errors are logged with the request ID and return a generic `500`, so internals never leak.
+
+## Database migrations
+
+```bash
+pnpm db:generate     # write a migration from schema changes, then read it
+pnpm db:migrate      # apply it
+pnpm db:studio       # browse the data
+```
+
+Rules (CI enforces the first two):
+
+1. Every schema change ships with a migration in the same PR. CI fails if `db:generate` would produce a new one.
+2. Migrations apply cleanly to an empty database.
+3. Never edit a migration that is already on `main`. Add a new one.
+4. The running version must keep working on the new schema while the new version deploys. Add columns as nullable or with a default; remove columns in a later release.
+5. Migrations that change data must be safe to run twice.
+6. Every tenant-scoped table gets row-level security policies.
