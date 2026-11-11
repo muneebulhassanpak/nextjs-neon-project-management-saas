@@ -20,7 +20,7 @@ export function FinalCta() {
           <div className="flex flex-wrap justify-center gap-3">
             <PillLink href="/sign-up">Start for free</PillLink>
             <PillLink href="/sign-in" variant="outline">
-              Log in
+              Sign in
             </PillLink>
           </div>
         </div>

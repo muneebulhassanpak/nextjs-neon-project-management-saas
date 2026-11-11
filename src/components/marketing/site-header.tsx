@@ -16,14 +16,30 @@ import {
 
 import { PillLink } from "./primitives";
 
+// Absolute (`/#…`) so they also work from the auth pages.
 export const SECTION_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#features", label: "Features" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
-export function SiteHeader() {
+/**
+ * The header shared by the landing page and the auth pages. `minimal` drops the section links
+ * and account buttons, for pages people reach while already signed in (onboarding, invitations).
+ */
+export function SiteHeader({ minimal = false }: { minimal?: boolean }) {
+  if (minimal) {
+    return (
+      <header className="sticky top-0 z-40 bg-background/50 backdrop-blur-lg">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <Logo />
+          <ThemeToggle />
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-transparent bg-background/70 backdrop-blur-lg supports-[backdrop-filter]:bg-background/50">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
@@ -47,7 +63,7 @@ export function SiteHeader() {
             href="/sign-in"
             className="hidden rounded-full px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted sm:block"
           >
-            Log in
+            Sign in
           </Link>
           <PillLink href="/sign-up" className="hidden sm:inline-flex">
             Get started
@@ -78,7 +94,7 @@ export function SiteHeader() {
               </nav>
               <div className="mt-auto flex flex-col gap-2 p-4">
                 <Button variant="outline" asChild>
-                  <Link href="/sign-in">Log in</Link>
+                  <Link href="/sign-in">Sign in</Link>
                 </Button>
                 <Button asChild>
                   <Link href="/sign-up">Get started for free</Link>
