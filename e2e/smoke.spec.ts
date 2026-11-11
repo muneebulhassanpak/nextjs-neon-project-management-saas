@@ -14,7 +14,7 @@ test("the landing page leads to sign-up and sign-in", async ({ page }) => {
   await expect(page).toHaveURL(/\/sign-up$/);
 
   await page.goto("/");
-  await page.getByRole("banner").getByRole("link", { name: "Log in" }).click();
+  await page.getByRole("banner").getByRole("link", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
 });
 
@@ -24,7 +24,7 @@ test("the mobile menu links to the page sections and to sign-up", async ({ page 
 
   await page.getByRole("button", { name: "Open menu" }).click();
   const menu = page.getByRole("dialog");
-  await expect(menu.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "#pricing");
+  await expect(menu.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/#pricing");
   await menu.getByRole("link", { name: "Get started for free" }).click();
   await expect(page).toHaveURL(/\/sign-up$/);
 });

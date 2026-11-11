@@ -8,17 +8,17 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { href: "#features", label: "Features" },
-      { href: "#how-it-works", label: "How it works" },
-      { href: "#pricing", label: "Pricing" },
-      { href: "#faq", label: "FAQ" },
+      { href: "/#features", label: "Features" },
+      { href: "/#how-it-works", label: "How it works" },
+      { href: "/#pricing", label: "Pricing" },
+      { href: "/#faq", label: "FAQ" },
     ],
   },
   {
     title: "Account",
     links: [
-      { href: "/sign-up", label: "Create an account" },
-      { href: "/sign-in", label: "Log in" },
+      { href: "/sign-up", label: "Sign up" },
+      { href: "/sign-in", label: "Sign in" },
       { href: "/forgot-password", label: "Reset password" },
     ],
   },
