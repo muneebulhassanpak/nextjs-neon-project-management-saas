@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { textField } from "@/lib/form-data";
-import { formatDate, formatRelativeDays, formatRelativeTime } from "@/lib/format";
+import { formatCount, formatDate, formatRelativeDays, formatRelativeTime } from "@/lib/format";
 
 describe("formatDate", () => {
   it("formats in UTC", () => {
@@ -34,6 +34,16 @@ describe("formatRelativeTime", () => {
     [new Date("2026-11-01T12:00:00Z"), "Nov 1"],
   ])("%s → %s", (date, label) => {
     expect(formatRelativeTime(date, now)).toBe(label);
+  });
+});
+
+describe("formatCount", () => {
+  it("rounds and formats each kind", () => {
+    expect(formatCount(85.6)).toBe("86");
+    expect(formatCount(0, "percent")).toBe("0%");
+    expect(formatCount(63.5, "percent")).toBe("64%");
+    expect(formatCount(1930, "duration")).toBe("32h 10m");
+    expect(formatCount(59.4, "duration")).toBe("0h 59m");
   });
 });
 
