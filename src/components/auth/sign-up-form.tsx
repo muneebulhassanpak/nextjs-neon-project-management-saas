@@ -15,7 +15,10 @@ import { SocialButtons, type SocialProvider } from "./social-buttons";
 import { SubmitButton } from "./submit-button";
 
 export function SignUpForm({ providers }: { providers: SocialProvider[] }) {
-  const next = safeNextPath(useSearchParams().get("next"));
+  const params = useSearchParams();
+  const next = safeNextPath(params.get("next"));
+  // Prefilled when arriving from an invitation, so the account matches the invited email.
+  const invitedEmail = params.get("email") ?? undefined;
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
 
@@ -61,7 +64,14 @@ export function SignUpForm({ providers }: { providers: SocialProvider[] }) {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="email">Work email</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            defaultValue={invitedEmail}
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="password">Password</Label>
