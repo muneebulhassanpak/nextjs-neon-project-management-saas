@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Job ids lint, typecheck, test, migrations, build and e2e are required checks in the
+# "Protect main" ruleset. Do not rename them.
+#
+# The Postgres service is published on 5433, the same port as docker-compose, so the
+# app's local defaults (DATABASE_URL, TEST_DATABASE_URL) work in CI unchanged.
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: stackboard
+          POSTGRES_PASSWORD: stackboard
+          POSTGRES_DB: stackboard
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U stackboard" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm test:coverage --coverage.reporter=text --coverage.reporter=json-summary
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: stackboard
+          POSTGRES_PASSWORD: stackboard
+          POSTGRES_DB: stackboard
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U stackboard" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Migrations are consistent
+        run: pnpm db:check
+      - name: Apply every migration to an empty database
+        run: pnpm db:migrate
+      - name: Schema matches migrations (no drift)
+        run: |
+          pnpm db:generate
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::The schema changed without a migration. Run 'pnpm db:generate' and commit the result."
+            git status --porcelain drizzle
+            exit 1
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: stackboard
+          POSTGRES_PASSWORD: stackboard
+          POSTGRES_DB: stackboard
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U stackboard" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm db:migrate
+      - run: pnpm build
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
