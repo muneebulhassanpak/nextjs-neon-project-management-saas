@@ -6,6 +6,7 @@ import { Pool } from "pg";
 import { env } from "@/env";
 
 import * as schema from "./schema";
+import { normalizeDatabaseUrl } from "./url";
 
 // node-postgres works the same against local Docker, CI and Neon (use Neon's pooled URL).
 // In development the pool is kept on globalThis so hot reloads don't open new connections.
@@ -13,7 +14,11 @@ const globalForDb = globalThis as unknown as { pool?: Pool };
 
 const pool =
   globalForDb.pool ??
-  new Pool({ connectionString: env.DATABASE_URL, max: 10, idleTimeoutMillis: 5_000 });
+  new Pool({
+    connectionString: normalizeDatabaseUrl(env.DATABASE_URL),
+    max: 10,
+    idleTimeoutMillis: 5_000,
+  });
 
 if (env.NODE_ENV !== "production") globalForDb.pool = pool;
 
