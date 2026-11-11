@@ -68,7 +68,10 @@ export const auth = betterAuth({
     // Keeps session lookups off the database for 5 minutes at a time.
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
-  rateLimit: { enabled: env.NODE_ENV === "production", storage: "database" },
+  rateLimit: {
+    enabled: env.NODE_ENV === "production" && env.AUTH_RATE_LIMIT,
+    storage: "database",
+  },
   hooks: {
     before: createAuthMiddleware((ctx) => {
       if (ctx.request && SERVER_ONLY_PATHS.has(ctx.path)) {
