@@ -1,5 +1,6 @@
-import { Check, FileText } from "lucide-react";
+import { Check, FileText, MousePointer2 } from "lucide-react";
 
+import { InView } from "@/components/motion/in-view";
 import { cn } from "@/lib/utils";
 
 import { FakeAvatar, Glow, MockCard, PillLink, SectionHeading } from "./primitives";
@@ -70,9 +71,14 @@ function Row({
           Try it free
         </PillLink>
       </div>
-      <div aria-hidden className="rounded-3xl border bg-background/60 p-6 shadow-sm sm:p-10">
-        {visual}
-      </div>
+      <InView>
+        <div
+          aria-hidden
+          className="lp-reveal rounded-3xl border bg-background/60 p-6 shadow-sm sm:p-10"
+        >
+          {visual}
+        </div>
+      </InView>
     </div>
   );
 }
@@ -132,9 +138,20 @@ function PortalVisual() {
   );
 }
 
-const COLUMNS = [
+interface Task {
+  title: string;
+  tag: string;
+  who: string;
+  color: number;
+  /** Dragged to the next column on a loop (see `.lp-drag` in landing-motion.css). */
+  moving?: boolean;
+}
+
+// `after` is the count once the moving card has landed.
+const COLUMNS: { name: string; after: number; tasks: Task[] }[] = [
   {
     name: "To do",
+    after: 2,
     tasks: [
       { title: "Write launch email", tag: "Marketing", who: "Ali Khan", color: 0 },
       { title: "Pricing page copy", tag: "Content", who: "Omar Ray", color: 2 },
@@ -142,12 +159,14 @@ const COLUMNS = [
   },
   {
     name: "In progress",
+    after: 0,
     tasks: [
       { title: "Checkout flow", tag: "Development", who: "Sara Malik", color: 3, moving: true },
     ],
   },
   {
     name: "Done",
+    after: 2,
     tasks: [{ title: "Brand colours", tag: "Design", who: "Lina Park", color: 4 }],
   },
 ];
@@ -172,14 +191,14 @@ function BoardVisual() {
             className="flex flex-col gap-2 rounded-xl bg-muted/60 p-2 last:hidden sm:last:flex"
           >
             <p className="px-1 text-[0.7rem] font-medium text-muted-foreground">
-              {column.name} · {column.tasks.length}
+              {column.name} · <Count before={column.tasks.length} after={column.after} />
             </p>
             {column.tasks.map((task) => (
               <div
                 key={task.title}
                 className={cn(
                   "rounded-lg border bg-card p-2.5 shadow-sm",
-                  "moving" in task && "rotate-2 border-primary/40 shadow-lg ring-2 ring-primary/20",
+                  task.moving && "lp-drag lp-loop relative z-10",
                 )}
               >
                 <p className="text-xs font-medium">{task.title}</p>
@@ -189,11 +208,35 @@ function BoardVisual() {
                   </span>
                   <FakeAvatar name={task.who} color={task.color} className="size-5 text-[0.5rem]" />
                 </div>
+                {task.moving && <DragCursor name={task.who.split(" ")[0] ?? task.who} />}
               </div>
             ))}
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+/** A column count that ticks over when the card lands, in step with the drag loop. */
+function Count({ before, after }: { before: number; after: number }) {
+  if (before === after) return <>{before}</>;
+  return (
+    <span className="inline-grid tabular-nums">
+      <span className="lp-count-from lp-loop [grid-area:1/1]">{before}</span>
+      <span className="lp-count-to lp-loop opacity-0 [grid-area:1/1]">{after}</span>
+    </span>
+  );
+}
+
+/** Someone else's cursor holding the card, to show live presence. Hidden unless animating. */
+function DragCursor({ name }: { name: string }) {
+  return (
+    <span className="lp-drag-cursor lp-loop pointer-events-none absolute -right-3 -bottom-5 flex items-start opacity-0">
+      <MousePointer2 className="size-4 fill-rose-500 text-rose-600" />
+      <span className="mt-3 -ml-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[0.6rem] font-medium text-white shadow-sm">
+        {name}
+      </span>
+    </span>
   );
 }
