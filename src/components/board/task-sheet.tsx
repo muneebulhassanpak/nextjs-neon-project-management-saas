@@ -86,7 +86,7 @@ export function TaskSheet({
       }}
     >
       <SheetContent
-        className="w-full gap-0 overflow-y-auto data-[side=right]:sm:max-w-xl"
+        className="gap-0 overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
         onEscapeKeyDown={(event) => {
           // Escape first closes the mention list or cancels a comment edit.
           if (event.target instanceof Element && event.target.closest(`[${CAPTURES_ESCAPE}]`)) {
@@ -144,7 +144,7 @@ function TaskPanel({
         <TitleField task={task} editable={canEdit} onSave={(title) => void save({ title })} />
       </div>
 
-      <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-4 gap-y-2 border-b p-6 text-sm">
+      <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-b p-6 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
         <dt className="text-muted-foreground">Status</dt>
         <dd>
           <StatusField task={task} board={board} editable={canEdit} />
