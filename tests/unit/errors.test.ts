@@ -5,6 +5,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  pgErrorCode,
   PlanLimitError,
   toErrorBody,
   UnauthorizedError,
@@ -81,5 +82,33 @@ describe("withErrorHandling", () => {
     expect(await response.json()).toEqual({
       error: { code: "not_found", message: "Project not found", requestId: "req-42" },
     });
+  });
+});
+
+describe("database errors", () => {
+  /** How Drizzle surfaces a Postgres error: the driver error sits in `cause`. */
+  function dbError(code: string) {
+    return Object.assign(new Error("Failed query"), {
+      cause: Object.assign(new Error("pg"), { code }),
+    });
+  }
+
+  it.each([
+    ["42501", 403, "forbidden"],
+    ["23505", 409, "conflict"],
+    ["23503", 409, "conflict"],
+  ])("maps SQLSTATE %s to %s", (sqlState, status, code) => {
+    expect(toErrorBody(dbError(sqlState))).toMatchObject({ status, body: { code } });
+  });
+
+  it("treats other database errors as unexpected", () => {
+    expect(toErrorBody(dbError("57014")).status).toBe(500);
+  });
+
+  it("reads the code from the error or its cause, ignoring non-SQLSTATE codes", () => {
+    expect(pgErrorCode(Object.assign(new Error(), { code: "23505" }))).toBe("23505");
+    expect(pgErrorCode(dbError("42501"))).toBe("42501");
+    expect(pgErrorCode(Object.assign(new Error(), { code: "ECONNREFUSED" }))).toBeUndefined();
+    expect(pgErrorCode("nope")).toBeUndefined();
   });
 });
