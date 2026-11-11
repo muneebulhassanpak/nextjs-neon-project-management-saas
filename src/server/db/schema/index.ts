@@ -2,3 +2,4 @@
 // so Drizzle Kit and the client see one schema.
 export * from "./auth";
 export * from "./policies";
+export * from "./projects";
