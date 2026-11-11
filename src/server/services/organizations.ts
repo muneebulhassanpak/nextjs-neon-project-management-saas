@@ -2,8 +2,10 @@ import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 
 import { isRole, type Role } from "@/lib/roles";
+import { db } from "@/server/db/client";
 import { member, organization } from "@/server/db/schema";
 import { withOrgContext } from "@/server/db/tenant";
+import { NotFoundError } from "@/server/errors";
 
 export interface Membership {
   memberId: string;
@@ -88,4 +90,41 @@ export async function findMembershipById(
       .limit(1),
   );
   return row ? toMembership(row) : null;
+}
+
+/**
+ * Makes `newOwnerMemberId` the owner and the current owner an admin, in one transaction so the
+ * organization never ends up with zero or two owners. Callers must check the actor is the owner.
+ */
+export async function transferOwnership(input: {
+  orgId: string;
+  currentOwnerMemberId: string;
+  newOwnerMemberId: string;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const promoted = await tx
+      .update(member)
+      .set({ role: "owner" })
+      .where(and(eq(member.id, input.newOwnerMemberId), eq(member.organizationId, input.orgId)))
+      .returning({ id: member.id });
+    if (promoted.length !== 1)
+      throw new NotFoundError("That member is no longer in this organization.");
+
+    await tx
+      .update(member)
+      .set({ role: "admin" })
+      .where(
+        and(eq(member.id, input.currentOwnerMemberId), eq(member.organizationId, input.orgId)),
+      );
+  });
+}
+
+/** Where a user's home is: their active organization, their first one, or onboarding. */
+export async function resolveHomePath(
+  userId: string,
+  activeOrgId?: string | null,
+): Promise<string> {
+  const memberships = await listMemberships(userId);
+  const home = memberships.find((m) => m.org.id === activeOrgId) ?? memberships[0];
+  return home ? `/${home.org.slug}` : "/onboarding";
 }

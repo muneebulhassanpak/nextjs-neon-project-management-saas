@@ -9,10 +9,12 @@ import { textField } from "@/lib/form-data";
 import { canChangeRole, canInvite, canRemoveMember, INVITABLE_ROLES, ROLES } from "@/lib/roles";
 import { auth } from "@/server/auth";
 import { requireOrgMember } from "@/server/auth/org";
+import { requireSession } from "@/server/auth/session";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
 import type { ActionResult } from "@/server/errors";
 import { logger } from "@/server/logger";
 import { findMember } from "@/server/services/members";
+import { resolveHomePath } from "@/server/services/organizations";
 
 import { runAction } from "./run-action";
 
@@ -147,6 +149,6 @@ export async function leaveOrganization(organizationId: string): Promise<ActionR
     await auth.api.leaveOrganization({ body: { organizationId }, headers: await headers() });
     return null;
   });
-  if (result.ok) redirect("/dashboard");
+  if (result.ok) redirect(await resolveHomePath((await requireSession()).user.id));
   return result;
 }
