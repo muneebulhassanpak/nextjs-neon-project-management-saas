@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,8 @@ export function BoardView({
   onOpenTask: (taskId: string) => void;
 }) {
   const { orgId, canEdit } = useBoardContext();
+  // dnd-kit's own ids come from a counter, which differs between server and client renders.
+  const dndId = useId();
   const move = useBoardMutation(moveTaskAction, applyMove);
   // While dragging, the layout is kept locally so cards can hop between columns.
   const [dragLayout, setDragLayout] = useState<Layout | null>(null);
@@ -138,6 +140,7 @@ export function BoardView({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={onDragStart}
