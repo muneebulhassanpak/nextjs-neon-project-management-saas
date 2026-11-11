@@ -8,7 +8,9 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
+    LOG_LEVEL: z
+      .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
+      .default("info"),
     // Any Postgres URL: local Docker, a Neon branch, or Neon production.
     DATABASE_URL: z.url().default("postgresql://stackboard:stackboard@localhost:5433/stackboard"),
   },

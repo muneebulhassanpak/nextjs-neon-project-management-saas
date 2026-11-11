@@ -16,7 +16,13 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@t3-oss/env-nextjs": "^0.13.11",
@@ -39,11 +45,13 @@
   },
   "devDependencies": {
     "@next/env": "^16.4.6",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^22",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.1.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
@@ -55,7 +63,8 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
   },
   "packageManager": "pnpm@10.33.0",
   "description": "Multi-tenant project management SaaS built with Next.js, Neon and Cloudflare",
