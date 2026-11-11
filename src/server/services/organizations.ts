@@ -73,3 +73,19 @@ export async function countMembers(userId: string, orgId: string): Promise<numbe
   );
   return rows.length;
 }
+
+/** The user's membership in the organization with this id, or `null` if they aren't in it. */
+export async function findMembershipById(
+  userId: string,
+  orgId: string,
+): Promise<Membership | null> {
+  const [row] = await withOrgContext({ userId, orgId }, (tx) =>
+    tx
+      .select(membershipColumns)
+      .from(member)
+      .innerJoin(organization, eq(member.organizationId, organization.id))
+      .where(and(eq(member.userId, userId), eq(organization.id, orgId)))
+      .limit(1),
+  );
+  return row ? toMembership(row) : null;
+}
