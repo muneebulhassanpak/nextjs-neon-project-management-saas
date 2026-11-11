@@ -7,6 +7,7 @@ import { auth } from "@/server/auth";
 import { requireSession } from "@/server/auth/session";
 import type { ActionResult } from "@/server/errors";
 import { logger } from "@/server/logger";
+import { resolveHomePath } from "@/server/services/organizations";
 
 import { runAction } from "./run-action";
 
@@ -31,6 +32,6 @@ export async function declineInvitation(invitationId: string): Promise<ActionRes
     await auth.api.rejectInvitation({ body: { invitationId }, headers: await headers() });
     return null;
   });
-  if (result.ok) redirect("/dashboard");
+  if (result.ok) redirect(await resolveHomePath((await requireSession()).user.id));
   return result;
 }

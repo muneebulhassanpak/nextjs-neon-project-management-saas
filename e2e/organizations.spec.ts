@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { signUpAndSignIn, uniqueEmail } from "./helpers/auth";
+import { signIn, signUpAndSignIn, uniqueEmail } from "./helpers/auth";
 import { pendingInvitationId } from "./helpers/db";
 
 test.describe.configure({ mode: "serial" });
@@ -31,18 +31,13 @@ test("signed-out visitors are sent to sign in", async ({ page }) => {
 
 test("an owner invites someone, who signs up and joins", async ({ browser }) => {
   const ownerPage = await (await browser.newContext()).newPage();
-  await ownerPage.goto("/sign-in");
-  await ownerPage.getByLabel("Email").fill(owner.email);
-  await ownerPage.getByLabel("Password").fill("e2e-password-123");
-  await ownerPage.getByRole("button", { name: "Sign in", exact: true }).click();
-  await ownerPage.waitForURL(new RegExp(`/${slug}$`));
-
-  await ownerPage.goto(`/${slug}/settings/members`);
+  await signIn(ownerPage, owner.email, `/${slug}/settings/members`);
   await ownerPage.getByRole("button", { name: "Invite people" }).click();
-  await ownerPage.getByLabel("Email").fill(invitee.email);
-  await ownerPage.getByRole("button", { name: "Send invitation" }).click();
+  const dialog = ownerPage.getByRole("dialog");
+  await dialog.getByLabel("Email").fill(invitee.email);
+  await dialog.getByRole("button", { name: "Send invitation" }).click();
   await expect(ownerPage.getByText(`Invitation sent to ${invitee.email}`)).toBeVisible();
-  await ownerPage.getByRole("button", { name: "Done" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
   await expect(ownerPage.getByText(invitee.email, { exact: true })).toBeVisible();
 
   // The invitee opens the link from the email in a fresh browser.
@@ -78,4 +73,31 @@ test("members can't open organizations they don't belong to", async ({ page }) =
   await page.goto(`/${slug}`);
 
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+});
+
+test("the owner renames the organization and changes its URL", async ({ page }) => {
+  await signIn(page, owner.email, `/${slug}/settings`);
+
+  const general = page.getByRole("main").locator("form").first();
+  await general.getByLabel("Name").fill("Acme Studio");
+  await general.getByLabel("URL").fill(`${slug}-studio`);
+  await general.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/${slug}-studio/settings$`));
+  await expect(page.getByRole("button", { name: "Switch organization" })).toContainText(
+    "Acme Studio",
+  );
+});
+
+test("deleting the organization requires typing its name", async ({ page }) => {
+  await signIn(page, owner.email, `/${slug}-studio/settings`);
+
+  await page.getByRole("button", { name: "Delete organization" }).click();
+  const confirm = page.getByRole("button", { name: "Delete forever" });
+  await expect(confirm).toBeDisabled();
+  await page.getByLabel(/Type .* to confirm/).fill("Acme Studio");
+  await confirm.click();
+
+  // The owner has no other organization left, so they land on onboarding.
+  await expect(page).toHaveURL(/\/onboarding$/);
 });

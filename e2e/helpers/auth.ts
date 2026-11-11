@@ -25,3 +25,12 @@ export async function signUpAndSignIn(page: Page, name: string, email: string): 
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
+
+/** Signs in an existing, verified user and waits until `next` has loaded. */
+export async function signIn(page: Page, email: string, next: string): Promise<void> {
+  await page.goto(`/sign-in?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL((url) => url.pathname === next);
+}
