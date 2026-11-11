@@ -41,10 +41,11 @@ export function Faq() {
       <div className="mx-auto max-w-3xl px-6">
         <SectionHeading eyebrow="FAQ" title="Questions, answered" />
         <div className="mt-12 flex flex-col gap-3">
-          {QUESTIONS.map((item) => (
+          {QUESTIONS.map((item, index) => (
             <details
               key={item.question}
-              className="group rounded-2xl border bg-card px-6 open:bg-muted/30"
+              style={{ "--i": Math.min(index, 3) } as React.CSSProperties}
+              className="lp-reveal lp-details group rounded-2xl border bg-card px-6 transition-colors duration-300 open:bg-muted/30"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-medium [&::-webkit-details-marker]:hidden">
                 {item.question}

@@ -9,10 +9,11 @@ export function BuiltWith() {
           Built on the same tools as the fastest teams on the web
         </h2>
         <ul className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-          {STACK.map((name) => (
+          {STACK.map((name, index) => (
             <li
               key={name}
-              className="text-lg font-semibold tracking-tight text-foreground/50 transition-colors hover:text-foreground"
+              style={{ "--i": index } as React.CSSProperties}
+              className="lp-reveal text-lg font-semibold tracking-tight text-foreground/50 transition-colors hover:text-foreground"
             >
               {name}
             </li>
