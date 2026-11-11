@@ -14,12 +14,15 @@ export default function OrgLayout({ children, params }: LayoutProps<"/[orgSlug]"
       <Suspense fallback={<SidebarFallback />}>
         <OrgSidebar params={params} />
       </Suspense>
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
         </header>
-        <div className="mx-auto w-full max-w-5xl flex-1 p-6">{children}</div>
+        {/* Pages marked data-wide (the board) use the full width. */}
+        <div className="mx-auto w-full max-w-5xl flex-1 p-6 has-data-wide:max-w-none">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
