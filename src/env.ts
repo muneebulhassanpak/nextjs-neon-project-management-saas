@@ -32,6 +32,9 @@ export const env = createEnv({
     GITHUB_CLIENT_ID: z.string().optional(),
     GITHUB_CLIENT_SECRET: z.string().optional(),
 
+    // Sign-in rate limiting (production only). Turned off for end-to-end tests.
+    AUTH_RATE_LIMIT: z.stringbool().default(true),
+
     // Email. "console" prints emails to the server log, so everything works without an account.
     EMAIL_MODE: z.enum(["console", "resend"]).default("console"),
     RESEND_API_KEY: z.string().optional(),
@@ -50,6 +53,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+    AUTH_RATE_LIMIT: process.env.AUTH_RATE_LIMIT,
     EMAIL_MODE: process.env.EMAIL_MODE,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,

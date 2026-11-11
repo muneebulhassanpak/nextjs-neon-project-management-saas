@@ -40,6 +40,11 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Tests build patterns and queries from their own fixed data, not user input.
+    files: ["tests/**", "e2e/**"],
+    rules: { "security/detect-non-literal-regexp": "off" },
+  },
+  {
     files: ["**/*.{js,mjs,cjs}"],
     extends: [tseslint.configs.disableTypeChecked],
   },
