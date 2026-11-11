@@ -1,13 +1,16 @@
 import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
+import type { ActivityEvent } from "@/lib/activity";
 import { positionAtEnd } from "@/lib/positions";
 import type { TaskDescription, TaskPriority } from "@/lib/projects";
 import { labels, taskLabels, tasks, user } from "@/server/db/schema";
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
 
+import { logActivity, loggedRecently } from "./activity";
 import { assignablePeople, findColumn, place, tasksIn, type BoardLabel } from "./board";
+import { notify } from "./notifications";
 
 import type { Person } from "./projects";
 import type { Scope } from "./scope";
@@ -32,6 +35,12 @@ export async function createTask(
       })
       .returning({ id: tasks.id, position: tasks.position });
     if (!task) throw new Error("Task insert returned no row");
+    await logActivity(tx, scope, {
+      action: "task.created",
+      projectId: column.projectId,
+      taskId: task.id,
+      metadata: { title: input.title, column: column.name },
+    });
     return task;
   });
 }
@@ -98,7 +107,13 @@ export interface TaskChanges {
   assigneeId?: string | null;
 }
 
-/** Updates the given fields. An assignee must be someone who can see the project. */
+/** Repeated description saves within this window are logged once. */
+const DESCRIPTION_LOG_WINDOW_SECONDS = 10 * 60;
+
+/**
+ * Updates the given fields and logs each change. An assignee must be someone who can see the
+ * project; they're notified unless they assigned themselves.
+ */
 export async function updateTask(
   scope: Scope,
   taskId: string,
@@ -106,11 +121,9 @@ export async function updateTask(
 ): Promise<void> {
   await withOrgContext(scope, async (tx) => {
     const task = await findTask(tx, taskId);
-    if (changes.assigneeId) {
-      const people = await assignablePeople(tx, scope.orgId, task.projectId);
-      if (!people.some((person) => person.id === changes.assigneeId)) {
-        throw new ValidationError("Assign the task to someone on this project.");
-      }
+    const people = await assignablePeople(tx, scope.orgId, task.projectId);
+    if (changes.assigneeId && !people.some((person) => person.id === changes.assigneeId)) {
+      throw new ValidationError("Assign the task to someone on this project.");
     }
     if (Object.keys(changes).length === 0) return;
     const updated = await tx
@@ -119,6 +132,32 @@ export async function updateTask(
       .where(eq(tasks.id, taskId))
       .returning({ id: tasks.id });
     if (updated.length === 0) throw new ForbiddenError("You can't edit this task.");
+
+    const title = changes.title ?? task.title;
+    const log = (event: ActivityEvent) =>
+      logActivity(tx, scope, { ...event, projectId: task.projectId, taskId });
+    if (changes.title !== undefined && changes.title !== task.title) {
+      await log({ action: "task.renamed", metadata: { title, from: task.title } });
+    }
+    if (changes.priority !== undefined && changes.priority !== task.priority) {
+      await log({ action: "task.prioritized", metadata: { title, priority: changes.priority } });
+    }
+    if (changes.dueDate !== undefined && changes.dueDate !== task.dueDate) {
+      await log({ action: "task.scheduled", metadata: { title, dueDate: changes.dueDate } });
+    }
+    if (
+      changes.description !== undefined &&
+      !(await loggedRecently(tx, scope, taskId, "task.described", DESCRIPTION_LOG_WINDOW_SECONDS))
+    ) {
+      await log({ action: "task.described", metadata: { title } });
+    }
+    if (changes.assigneeId !== undefined && changes.assigneeId !== task.assigneeId) {
+      const assignee = people.find((person) => person.id === changes.assigneeId);
+      await log({ action: "task.assigned", metadata: { title, assignee: assignee?.name ?? null } });
+      if (assignee) {
+        await notify(tx, scope, { type: "assigned", taskId, recipients: [assignee.id] });
+      }
+    }
   });
 }
 
@@ -140,6 +179,15 @@ export async function moveTask(
     const position = await place(tx, tasks, siblings, task.id, input.afterTaskId, {
       columnId: column.id,
     });
+    if (column.id !== task.columnId) {
+      const from = await findColumn(tx, task.columnId);
+      await logActivity(tx, scope, {
+        action: "task.moved",
+        projectId: task.projectId,
+        taskId: task.id,
+        metadata: { title: task.title, from: from.name, to: column.name },
+      });
+    }
     return { position };
   });
 }
@@ -151,16 +199,33 @@ export async function setTaskLabels(
   labelIds: string[],
 ): Promise<void> {
   await withOrgContext(scope, async (tx) => {
-    await findTask(tx, taskId);
+    const task = await findTask(tx, taskId);
     const wanted = [...new Set(labelIds)];
-    if (wanted.length > 0) {
-      const found = await tx
-        .select({ id: labels.id })
-        .from(labels)
-        .where(and(eq(labels.orgId, scope.orgId), inArray(labels.id, wanted)));
-      if (found.length !== wanted.length)
-        throw new ValidationError("One of the labels no longer exists.");
+    const found =
+      wanted.length === 0
+        ? []
+        : await tx
+            .select({ id: labels.id, name: labels.name })
+            .from(labels)
+            .where(and(eq(labels.orgId, scope.orgId), inArray(labels.id, wanted)))
+            .orderBy(asc(labels.name));
+    if (found.length !== wanted.length) {
+      throw new ValidationError("One of the labels no longer exists.");
     }
+    const current = await tx
+      .select({ id: taskLabels.labelId })
+      .from(taskLabels)
+      .where(eq(taskLabels.taskId, taskId));
+    const unchanged =
+      current.length === wanted.length && current.every((label) => wanted.includes(label.id));
+    if (unchanged) return;
+
+    await logActivity(tx, scope, {
+      action: "task.labeled",
+      projectId: task.projectId,
+      taskId,
+      metadata: { title: task.title, labels: found.map((label) => label.name) },
+    });
     await tx.delete(taskLabels).where(eq(taskLabels.taskId, taskId));
     if (wanted.length > 0) {
       await tx
@@ -173,15 +238,29 @@ export async function setTaskLabels(
 /** Deletes a task. Members can delete only the tasks they created (enforced by RLS). */
 export async function deleteTask(scope: Scope, taskId: string): Promise<void> {
   await withOrgContext(scope, async (tx) => {
-    await findTask(tx, taskId);
+    const task = await findTask(tx, taskId);
     const deleted = await tx.delete(tasks).where(eq(tasks.id, taskId)).returning({ id: tasks.id });
     if (deleted.length === 0) throw new ForbiddenError("You can only delete tasks you created.");
+    await logActivity(tx, scope, {
+      action: "task.deleted",
+      projectId: task.projectId,
+      taskId,
+      metadata: { title: task.title },
+    });
   });
 }
 
 async function findTask(tx: Transaction, taskId: string) {
   const [task] = await tx
-    .select({ id: tasks.id, projectId: tasks.projectId, columnId: tasks.columnId })
+    .select({
+      id: tasks.id,
+      projectId: tasks.projectId,
+      columnId: tasks.columnId,
+      title: tasks.title,
+      priority: tasks.priority,
+      dueDate: tasks.dueDate,
+      assigneeId: tasks.assigneeId,
+    })
     .from(tasks)
     .where(eq(tasks.id, taskId))
     .limit(1);

@@ -245,7 +245,7 @@ export async function deleteColumn(
 
 export async function findColumn(tx: Transaction, columnId: string) {
   const [column] = await tx
-    .select({ id: boardColumns.id, projectId: boardColumns.projectId })
+    .select({ id: boardColumns.id, projectId: boardColumns.projectId, name: boardColumns.name })
     .from(boardColumns)
     .where(eq(boardColumns.id, columnId))
     .limit(1);
