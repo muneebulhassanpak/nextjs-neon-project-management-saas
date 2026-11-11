@@ -28,3 +28,13 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
   if (days < 7) return `${days}d ago`;
   return shortDate.format(date);
 }
+
+export type CountFormat = "number" | "percent" | "duration";
+
+/** A count-up frame: `value` rounded, as a number, a percentage or minutes ("32h 10m"). */
+export function formatCount(value: number, format: CountFormat = "number"): string {
+  const n = Math.round(value);
+  if (format === "percent") return `${String(n)}%`;
+  if (format === "duration") return `${String(Math.floor(n / 60))}h ${String(n % 60)}m`;
+  return String(n);
+}
