@@ -36,6 +36,13 @@
       "when": 1794407924295,
       "tag": "0004_projects_and_boards",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794413265178,
+      "tag": "0005_collaboration_and_activity",
+      "breakpoints": true
     }
   ]
 }
