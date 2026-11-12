@@ -24,6 +24,7 @@ import type { Board, BoardTask } from "@/server/services/board";
 
 import { BoardColumnView } from "./board-column";
 import { applyMove, tasksByColumn, useBoardContext, useBoardMutation } from "./board-data";
+import { BoardScroller } from "./board-scroller";
 import { TaskCardPreview } from "./task-card";
 
 /** Task ids per column id, in display order. */
@@ -158,7 +159,7 @@ export function BoardView({
         },
       }}
     >
-      <div className="relative -mx-6 flex min-h-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-4">
+      <BoardScroller>
         {board.columns.map((column) => (
           <BoardColumnView
             key={column.id}
@@ -171,7 +172,7 @@ export function BoardView({
           />
         ))}
         {canEdit && <AddColumn />}
-      </div>
+      </BoardScroller>
       {/* The overlay lingers while it animates into place; it mustn't catch the next press. */}
       <DragOverlay dropAnimation={{ duration: 150 }} className="pointer-events-none">
         {active ? <TaskCardPreview task={active} /> : null}
