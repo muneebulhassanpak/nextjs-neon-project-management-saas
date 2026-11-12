@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, MoreHorizontal, Pencil, SmilePlus, Trash2 } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
@@ -24,8 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatRelativeTime } from "@/lib/format";
 import {
   mentionQueryAt,
@@ -34,17 +36,26 @@ import {
   toStoredBody,
   type MentionTarget,
 } from "@/lib/mentions";
+import {
+  REACTION_LABELS,
+  REACTIONS,
+  toggleReactionIn,
+  type Reaction,
+  type ReactionSummary,
+} from "@/lib/reactions";
 import { cn } from "@/lib/utils";
 import {
   addCommentAction,
   deleteCommentAction,
   editCommentAction,
+  toggleReactionAction,
 } from "@/server/actions/collaboration";
 import type { ActionResult } from "@/server/errors";
 import type { CommentItem } from "@/server/services/comments";
 import type { Person } from "@/server/services/projects";
 
 import { useBoardContext } from "./board-data";
+import { useTyping, type Typist } from "./use-board-channel";
 
 type CommentJson = Omit<CommentItem, "createdAt" | "editedAt"> & {
   createdAt: string;
@@ -73,6 +84,8 @@ export function TaskComments({ taskId, people }: { taskId: string; people: Perso
   const { orgId, canEdit } = useBoardContext();
   const comments = useComments(taskId);
   const refresh = useRefresh(taskId);
+  const { typing, sendTyping } = useTyping();
+  const typists = typing.filter((t) => t.taskId === taskId);
 
   if (comments.isPending) {
     return (
@@ -107,9 +120,13 @@ export function TaskComments({ taskId, people }: { taskId: string; people: Perso
           people={people}
           submitLabel="Comment"
           placeholder="Write a comment… Type @ to mention someone."
+          onTyping={() => {
+            sendTyping(taskId);
+          }}
           onSubmit={(body) => refresh(addCommentAction({ orgId, taskId, body }))}
         />
       )}
+      <TypingHint typists={typists} />
     </div>
   );
 }
@@ -215,7 +232,10 @@ function Comment({
             }}
           />
         ) : (
-          <CommentBody body={comment.body} people={people} />
+          <>
+            <CommentBody body={comment.body} people={people} />
+            <Reactions taskId={taskId} comment={comment} />
+          </>
         )}
       </div>
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
@@ -236,6 +256,137 @@ function Comment({
         </AlertDialogContent>
       </AlertDialog>
     </li>
+  );
+}
+
+/** "Grace is typing…", for others writing a comment on this task. Always rendered, so screen
+ * readers announce changes. */
+function TypingHint({ typists }: { typists: Typist[] }) {
+  const names = [...new Set(typists.map((t) => t.viewer.name.split(" ")[0] ?? t.viewer.name))];
+  const text =
+    names.length === 0
+      ? ""
+      : names.length === 1
+        ? `${names[0]} is typing…`
+        : names.length === 2
+          ? `${names[0]} and ${names[1]} are typing…`
+          : "Several people are typing…";
+  return (
+    <p
+      aria-live="polite"
+      data-testid="typing-hint"
+      className={cn(
+        "-mt-3 flex h-4 items-center gap-1.5 text-xs text-muted-foreground transition-opacity",
+        !text && "opacity-0",
+      )}
+    >
+      {text && (
+        <span className="flex gap-0.5" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="size-1 animate-bounce rounded-full bg-muted-foreground/70 motion-reduce:animate-none"
+              style={{ animationDelay: `${i * 150}ms` }}
+            />
+          ))}
+        </span>
+      )}
+      {text}
+    </p>
+  );
+}
+
+/** The comment's reactions, and a picker to add one. Clicking a reaction toggles yours. */
+function Reactions({ taskId, comment }: { taskId: string; comment: CommentJson }) {
+  const { orgId, userName } = useBoardContext();
+  const queryClient = useQueryClient();
+  const [picking, setPicking] = useState(false);
+
+  async function toggle(emoji: Reaction) {
+    setPicking(false);
+    const key = commentsKey(taskId);
+    const previous = queryClient.getQueryData<CommentJson[]>(key);
+    queryClient.setQueryData<CommentJson[]>(key, (list) =>
+      list?.map((c) =>
+        c.id === comment.id
+          ? { ...c, reactions: toggleReactionIn(c.reactions, emoji, userName) }
+          : c,
+      ),
+    );
+    const result = await toggleReactionAction({ orgId, commentId: comment.id, emoji });
+    if (!result.ok) {
+      queryClient.setQueryData(key, previous);
+      toast.error(result.error.message);
+    }
+    await queryClient.invalidateQueries({ queryKey: key });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {comment.reactions.map((reaction) => (
+        <ReactionChip
+          key={reaction.emoji}
+          reaction={reaction}
+          onToggle={() => void toggle(reaction.emoji)}
+        />
+      ))}
+      <Popover open={picking} onOpenChange={setPicking}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Add reaction"
+            className={cn(
+              "text-muted-foreground data-[state=open]:opacity-100",
+              comment.reactions.length === 0 &&
+                "opacity-0 group-hover/comment:opacity-100 focus-visible:opacity-100",
+            )}
+          >
+            <SmilePlus aria-hidden />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="flex w-auto gap-0.5 p-1">
+          {REACTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              aria-label={REACTION_LABELS[emoji]}
+              title={REACTION_LABELS[emoji]}
+              onClick={() => void toggle(emoji)}
+              className="flex size-8 items-center justify-center rounded-md text-base transition-transform outline-none hover:scale-110 hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:hover:scale-100"
+            >
+              {emoji}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function ReactionChip({ reaction, onToggle }: { reaction: ReactionSummary; onToggle: () => void }) {
+  const label = `${REACTION_LABELS[reaction.emoji]}: ${reaction.people.join(", ")}`;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-pressed={reaction.mine}
+          aria-label={label}
+          onClick={onToggle}
+          className={cn(
+            "inline-flex h-6 items-center gap-1 rounded-full border px-2 text-xs tabular-nums transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            reaction.mine
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "bg-background hover:bg-accent",
+          )}
+        >
+          <span aria-hidden>{reaction.emoji}</span>
+          <span aria-hidden>{reaction.count}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{reaction.people.join(", ")}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -265,6 +416,7 @@ function CommentComposer({
   submitLabel,
   placeholder,
   autoFocus,
+  onTyping,
   onSubmit,
   onCancel,
 }: {
@@ -273,6 +425,8 @@ function CommentComposer({
   submitLabel: string;
   placeholder?: string;
   autoFocus?: boolean;
+  /** Called on each keystroke that leaves text in the box. */
+  onTyping?: () => void;
   onSubmit: (body: string) => Promise<boolean>;
   onCancel?: () => void;
 }) {
@@ -357,6 +511,7 @@ function CommentComposer({
           onChange={(event) => {
             setText(event.target.value);
             track(event.target);
+            if (event.target.value.trim()) onTyping?.();
           }}
           onClick={(event) => {
             track(event.currentTarget);

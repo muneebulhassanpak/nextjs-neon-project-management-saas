@@ -101,6 +101,7 @@ export default async function ProjectPage({ params }: Props) {
           orgId: org.id,
           projectId: project.id,
           userId: user.id,
+          userName: user.name,
           role,
           assigned: project.assigned,
           canEdit: !archived && canEditProject(role, project.assigned),
