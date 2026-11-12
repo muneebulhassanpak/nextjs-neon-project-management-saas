@@ -101,6 +101,17 @@ test("checklists, bulk actions, undo and My work", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Activity", level: 1 })).toBeVisible();
   await expect(page.getByRole("main").getByText("Pat Power deleted Footer")).toBeVisible();
   await expect(page.getByRole("main").getByText("Pat Power created Hero in To do")).toBeVisible();
+
+  // The overview sums it up: Hero is done (moved there today), Pricing is still open.
+  await page.getByRole("link", { name: "Overview" }).click();
+  const tile = (label: string) =>
+    page.getByRole("main").locator("[data-slot=card]").filter({ hasText: label });
+  await expect(tile("Open tasks")).toContainText("1");
+  await expect(tile("Done this week")).toContainText("1");
+  await expect(page.getByRole("progressbar", { name: "Launch progress" })).toHaveAttribute(
+    "aria-valuetext",
+    "1 of 2 done",
+  );
 });
 
 test("teammates see each other typing and react to comments", async ({ browser }) => {
