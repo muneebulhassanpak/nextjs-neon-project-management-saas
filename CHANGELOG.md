@@ -9,6 +9,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Live boards: when someone adds, edits, moves or deletes a task, changes a column or comments, everyone else on the board sees it within a moment, without reloading. Built on a Cloudflare Worker with one Durable Object per board; the app stays the only source of truth.
+- Presence: the board shows who else has it open, and a task shows who else is looking at it. A "Live" indicator turns to "Reconnecting…" if the connection drops, and the board catches up once it's back.
+- An open task's description updates when someone else edits it, unless you're typing in it.
+
 - Landing page motion: the hero's chart grows in and its numbers count up, the showcase board drags a card from In progress to Done on a loop with a teammate's cursor, sections and cards reveal as you scroll, the How it works steps connect with a line, feature cards follow the pointer, the FAQ opens smoothly and the header shows which section you're in. Everything is off with reduced motion, and loops pause off screen.
 - Switching the theme reveals the new one as a circle growing from the theme button.
 - Comments on tasks, with @mentions picked from a suggestion list. Authors edit and delete their own comments; owners and admins can remove any.

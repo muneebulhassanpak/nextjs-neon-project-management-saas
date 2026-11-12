@@ -29,7 +29,7 @@ import { appUser } from "./policies";
  * 0003_project_access_functions:
  *   app_is_org_admin(org)        owner or admin of the organization
  *   app_can_view_project(org, id)  admins see every project; members see the ones they're on
- *   app_can_edit_project(org, id)  same as view for now; clients will view without editing (Phase 4)
+ *   app_can_edit_project(org, id)  same as view for now; clients will view without editing (Phase 5)
  */
 
 export const projectStatus = pgEnum("project_status", PROJECT_STATUSES);

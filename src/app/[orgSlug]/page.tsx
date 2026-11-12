@@ -81,7 +81,7 @@ export default async function OverviewPage({ params }: PageProps<"/[orgSlug]">) 
         </Card>
       </div>
 
-      {/* Clients only see their shared tasks (Phase 4), not the team's activity. */}
+      {/* Clients only see their shared tasks (Phase 5), not the team's activity. */}
       {role !== "client" && (
         <Card>
           <CardHeader>

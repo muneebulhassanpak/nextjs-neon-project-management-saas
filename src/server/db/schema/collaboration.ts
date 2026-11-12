@@ -52,7 +52,7 @@ export const comments = pgTable(
       to: appUser,
       using: sql`${inCurrentOrg(t.orgId)} and ${taskVisible(t.taskId)}`,
     }),
-    // Everyone who can see a task can discuss it (clients only on shared tasks, in Phase 4).
+    // Everyone who can see a task can discuss it (clients only on shared tasks, in Phase 5).
     pgPolicy("comments_insert", {
       for: "insert",
       to: appUser,
