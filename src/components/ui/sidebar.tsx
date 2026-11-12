@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useHydrated, useIsMobile } from "@/hooks/use-mobile";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -161,6 +161,9 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  // The sidebar streams in after the provider has hydrated (and already knows it's mobile), so it
+  // matches the server's desktop markup until it has hydrated itself.
+  const hydrated = useHydrated();
 
   if (collapsible === "none") {
     return (
@@ -177,7 +180,7 @@ function Sidebar({
     );
   }
 
-  if (isMobile) {
+  if (isMobile && hydrated) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent

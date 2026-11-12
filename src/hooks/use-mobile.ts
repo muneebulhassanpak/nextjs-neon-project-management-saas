@@ -19,3 +19,18 @@ export function useIsMobile() {
     () => false,
   );
 }
+
+const noSubscription = () => () => undefined;
+
+/**
+ * False while this component hydrates, true after. A part of the page that streams in after the
+ * rest has hydrated sees `useIsMobile()` already true, so it must not trust it until it has
+ * hydrated itself (the server rendered the desktop version).
+ */
+export function useHydrated() {
+  return React.useSyncExternalStore(
+    noSubscription,
+    () => true,
+    () => false,
+  );
+}
