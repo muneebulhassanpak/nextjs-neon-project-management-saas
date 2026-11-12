@@ -13,6 +13,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Project cards show progress (done of total, with a bar), what's overdue and the next due date.
 - Each person gets their own avatar colour, and new labels get colours that stand apart.
 - Dates ("today", overdue, due this week) follow the viewer's time zone.
+- Tasks open in a large modal: the description, checklist and comments on the left, the details on the right. Previous and Next (or `k` and `j`) step through the board's tasks without closing it. On phones it fills the screen.
 - The Activity page filters by search, dates (presets or any range), person, project and type of change, and the filters stay in the link.
 
 - Checklists inside tasks: add, tick off, rename and remove steps. The card shows progress (3/5).
@@ -39,7 +40,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - Projects: owners and admins create, edit, archive and restore projects and choose which members are on them. Members only see the projects they're added to.
 - Kanban boards: drag tasks within and between columns (mouse or keyboard), with the new order saved instantly and kept after a reload. Add, rename, reorder and delete columns.
-- Tasks: title, rich-text description, assignee, priority, due date and labels, edited in a side panel. Members can delete the tasks they created.
+- Tasks: title, rich-text description, assignee, priority, due date and labels, edited in a modal. Members can delete the tasks they created.
 - A list view of every task, and filters by text, assignee, priority and label.
 - Row-level security for projects, columns, tasks and labels, with tests proving members can't reach projects they aren't on.
 - Landing page: hero, features, client portal and live board showcases, how it works, pricing, FAQ and footer, with sign-up and log-in links throughout. Works in light and dark mode and on mobile.
