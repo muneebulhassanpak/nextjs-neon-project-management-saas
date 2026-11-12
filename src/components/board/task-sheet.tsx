@@ -66,16 +66,22 @@ import {
 } from "./board-data";
 import { DescriptionEditor } from "./description-editor";
 import { LabelChip, labelDot } from "./label-chip";
+import { TaskViewers } from "./presence";
 import { CAPTURES_ESCAPE, TaskComments, useComments } from "./task-comments";
 import { formatDueDate, PriorityIcon } from "./task-meta";
+
+import type { PresenceEntry } from "@realtime/protocol";
 
 export function TaskSheet({
   taskId,
   board,
+  viewers,
   onClose,
 }: {
   taskId: string | null;
   board: Board;
+  /** Others with this task open. */
+  viewers: PresenceEntry[];
   onClose: () => void;
 }) {
   return (
@@ -94,7 +100,15 @@ export function TaskSheet({
           }
         }}
       >
-        {taskId && <TaskPanel key={taskId} taskId={taskId} board={board} onClose={onClose} />}
+        {taskId && (
+          <TaskPanel
+            key={taskId}
+            taskId={taskId}
+            board={board}
+            viewers={viewers}
+            onClose={onClose}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -103,10 +117,12 @@ export function TaskSheet({
 function TaskPanel({
   taskId,
   board,
+  viewers,
   onClose,
 }: {
   taskId: string;
   board: Board;
+  viewers: PresenceEntry[];
   onClose: () => void;
 }) {
   const { orgId, userId, role, assigned, canEdit } = useBoardContext();
@@ -142,6 +158,7 @@ function TaskPanel({
           {board.columns.find((c) => c.id === task.columnId)?.name}
         </SheetDescription>
         <TitleField task={task} editable={canEdit} onSave={(title) => void save({ title })} />
+        <TaskViewers viewers={viewers} />
       </div>
 
       <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-b p-6 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">

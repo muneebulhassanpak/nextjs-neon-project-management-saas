@@ -12,7 +12,9 @@ import { BoardContext, useBoard, useBoardContext, type BoardContextValue } from 
 import { BoardView } from "./board-view";
 import { FilterBar, filterTasks, NO_FILTERS, type TaskFilters } from "./filters";
 import { ListView } from "./list-view";
+import { BoardPresence } from "./presence";
 import { TaskSheet } from "./task-sheet";
+import { useBoardChannel } from "./use-board-channel";
 
 /** The board, list and activity views of a project, with filters and the task sheet. */
 export function ProjectWorkspace({
@@ -44,6 +46,7 @@ function Workspace({ initialBoard }: { initialBoard: Board }) {
     else url.searchParams.delete("task");
     window.history.replaceState(null, "", url);
   }
+  const channel = useBoardChannel(openTaskId);
 
   return (
     <Tabs value={view} onValueChange={setView} className="flex min-h-0 flex-1 flex-col gap-4">
@@ -53,17 +56,20 @@ function Workspace({ initialBoard }: { initialBoard: Board }) {
         ) : (
           <FilterBar board={board} filters={filters} onChange={setFilters} />
         )}
-        <TabsList>
-          <TabsTrigger value="board">
-            <KanbanSquare aria-hidden /> Board
-          </TabsTrigger>
-          <TabsTrigger value="list">
-            <List aria-hidden /> List
-          </TabsTrigger>
-          <TabsTrigger value="activity">
-            <History aria-hidden /> Activity
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center gap-4">
+          <BoardPresence status={channel.status} viewers={channel.viewers} />
+          <TabsList>
+            <TabsTrigger value="board">
+              <KanbanSquare aria-hidden /> Board
+            </TabsTrigger>
+            <TabsTrigger value="list">
+              <List aria-hidden /> List
+            </TabsTrigger>
+            <TabsTrigger value="activity">
+              <History aria-hidden /> Activity
+            </TabsTrigger>
+          </TabsList>
+        </div>
       </div>
       <TabsContent value="board" className="flex min-h-0 flex-1 flex-col">
         <BoardView board={board} tasks={tasks} onOpenTask={setOpenTaskId} />
@@ -81,6 +87,7 @@ function Workspace({ initialBoard }: { initialBoard: Board }) {
       <TaskSheet
         taskId={openTaskId}
         board={board}
+        viewers={channel.viewers.filter((viewer) => viewer.taskId === openTaskId)}
         onClose={() => {
           setOpenTaskId(null);
         }}
