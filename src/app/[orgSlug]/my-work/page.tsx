@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { MyWorkList } from "@/components/my-work/my-work-list";
 import { requireOrg } from "@/server/auth/org";
 import { listMyWork } from "@/server/services/my-work";
+import { viewerToday } from "@/server/today";
 
 import type { Metadata } from "next";
 
@@ -17,11 +18,7 @@ export default async function MyWorkPage({ params }: PageProps<"/[orgSlug]/my-wo
         title="My work"
         description={`Everything assigned to you in ${org.name}, by when it's due.`}
       />
-      <MyWorkList
-        tasks={tasks}
-        serverToday={new Date().toISOString().slice(0, 10)}
-        orgSlug={org.slug}
-      />
+      <MyWorkList tasks={tasks} serverToday={await viewerToday()} orgSlug={org.slug} />
     </div>
   );
 }
