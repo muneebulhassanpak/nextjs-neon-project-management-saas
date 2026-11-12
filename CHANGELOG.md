@@ -15,6 +15,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - My work: every task assigned to you across projects, grouped into Overdue, Today, Next 7 days, Later and No date, with done tasks on request.
 - Reactions on comments (👍 ❤️ 🎉 👀 ✅ 😄), with who reacted shown on hover.
 - "Grace is typing…" under the comments when a teammate is writing one.
+- An Activity page with the whole history, grouped by day, 25 entries per page, filterable by project. The overview shows the latest 5 and links to it.
+- The board scrolls sideways without a scrollbar: edges with more columns fade out and get an arrow.
+- A floating sidebar with more space between links.
 
 - Live boards: when someone adds, edits, moves or deletes a task, changes a column or comments, everyone else on the board sees it within a moment, without reloading. Built on a Cloudflare Worker with one Durable Object per board; the app stays the only source of truth.
 - Presence: the board shows who else has it open, and a task shows who else is looking at it. A "Live" indicator turns to "Reconnecting…" if the connection drops, and the board catches up once it's back.
