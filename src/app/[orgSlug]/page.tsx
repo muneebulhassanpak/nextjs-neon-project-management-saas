@@ -96,9 +96,15 @@ export default async function OverviewPage({ params }: PageProps<"/[orgSlug]">) 
             <ActivityFeed
               orgId={org.id}
               orgSlug={org.slug}
+              limit={5}
               empty="Once people start working, their changes show up here."
             />
           </CardContent>
+          <CardFooter>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${org.slug}/activity`}>View all activity</Link>
+            </Button>
+          </CardFooter>
         </Card>
       )}
     </div>

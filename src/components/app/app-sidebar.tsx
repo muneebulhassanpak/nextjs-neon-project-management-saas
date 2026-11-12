@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderKanban, LayoutDashboard, ListTodo, Settings, Users } from "lucide-react";
+import { FolderKanban, History, LayoutDashboard, ListTodo, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -40,6 +40,10 @@ export function AppSidebar({
       ? []
       : [{ href: `${base}/my-work`, label: "My work", icon: ListTodo, exact: true }]),
     { href: `${base}/projects`, label: "Projects", icon: FolderKanban, exact: false },
+    // Clients don't see the team's activity.
+    ...(current.role === "client"
+      ? []
+      : [{ href: `${base}/activity`, label: "Activity", icon: History, exact: true }]),
     { href: `${base}/settings/members`, label: "Members", icon: Users, exact: false },
     ...(canManage
       ? [{ href: `${base}/settings`, label: "Settings", icon: Settings, exact: true }]
