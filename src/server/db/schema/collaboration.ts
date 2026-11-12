@@ -5,12 +5,14 @@ import {
   jsonb,
   pgPolicy,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
 
 import type { ActivityAction } from "@/lib/activity";
+import type { Reaction } from "@/lib/reactions";
 
 import { organization, user } from "./auth";
 import { appUser } from "./policies";
@@ -27,6 +29,8 @@ import { projects, tasks } from "./projects";
 const inCurrentOrg = (orgId: unknown) => sql`${orgId} = app_current_org_id()`;
 const taskVisible = (taskId: unknown) =>
   sql`exists (select 1 from tasks where tasks.id = ${taskId})`;
+const commentVisible = (commentId: unknown) =>
+  sql`exists (select 1 from comments where comments.id = ${commentId})`;
 
 export const comments = pgTable(
   "comments",
@@ -71,6 +75,42 @@ export const comments = pgTable(
       to: appUser,
       using: sql`${inCurrentOrg(t.orgId)} and ${taskVisible(t.taskId)}
         and (${t.authorId} = app_current_user_id() or app_is_org_admin(${t.orgId}))`,
+    }),
+  ],
+);
+
+/** Emoji reactions on comments: one row per person and emoji. Visible with the comment. */
+export const commentReactions = pgTable(
+  "comment_reactions",
+  {
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    orgId: text("org_id").notNull(),
+    emoji: text("emoji").$type<Reaction>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.commentId, t.userId, t.emoji] }),
+    index("comment_reactions_comment_idx").on(t.commentId),
+    pgPolicy("comment_reactions_select", {
+      for: "select",
+      to: appUser,
+      using: sql`${inCurrentOrg(t.orgId)} and ${commentVisible(t.commentId)}`,
+    }),
+    pgPolicy("comment_reactions_insert", {
+      for: "insert",
+      to: appUser,
+      withCheck: sql`${inCurrentOrg(t.orgId)} and ${t.userId} = app_current_user_id()
+        and ${commentVisible(t.commentId)}`,
+    }),
+    pgPolicy("comment_reactions_delete", {
+      for: "delete",
+      to: appUser,
+      using: sql`${inCurrentOrg(t.orgId)} and ${t.userId} = app_current_user_id()`,
     }),
   ],
 );
