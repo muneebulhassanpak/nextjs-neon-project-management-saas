@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
+import { todayIn } from "@/lib/dates";
 import { initialPositions } from "@/lib/positions";
 import { DEFAULT_COLUMNS, type ProjectStatus } from "@/lib/projects";
 import { isRole, type Role } from "@/lib/roles";
@@ -9,6 +10,7 @@ import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { NotFoundError, ValidationError } from "@/server/errors";
 
 import { logActivity } from "./activity";
+import { projectProgress, type ProjectProgress } from "./overview";
 
 import type { Scope } from "./scope";
 
@@ -26,12 +28,16 @@ export interface ProjectSummary {
   archivedAt: Date | null;
   taskCount: number;
   members: Person[];
+  progress: ProjectProgress;
 }
 
-/** Projects the user can see (RLS decides), newest first, with task counts and members. */
+/**
+ * Projects the user can see (RLS decides), newest first, with task counts, members and
+ * progress. `today` (the viewer's date) decides what's overdue.
+ */
 export async function listProjects(
   scope: Scope,
-  { archived = false }: { archived?: boolean } = {},
+  { archived = false, today = todayIn("UTC") }: { archived?: boolean; today?: string } = {},
 ): Promise<ProjectSummary[]> {
   return withOrgContext(scope, async (tx) => {
     const rows = await tx
@@ -54,11 +60,16 @@ export async function listProjects(
       .groupBy(projects.id)
       .orderBy(desc(projects.createdAt));
 
-    const members = await membersOf(
-      tx,
-      rows.map((r) => r.id),
-    );
-    return rows.map((row) => ({ ...row, members: members.get(row.id) ?? [] }));
+    const ids = rows.map((r) => r.id);
+    const [members, progress] = await Promise.all([
+      membersOf(tx, ids),
+      projectProgress(tx, ids, today),
+    ]);
+    return rows.map((row) => ({
+      ...row,
+      members: members.get(row.id) ?? [],
+      progress: progress.get(row.id) ?? { total: 0, done: 0, overdue: 0, nextDue: null },
+    }));
   });
 }
 

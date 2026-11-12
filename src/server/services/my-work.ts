@@ -5,7 +5,9 @@ import type { MyWorkTask } from "@/lib/my-work";
 import { boardColumns, checklistItems, projects, tasks } from "@/server/db/schema";
 import { withOrgContext } from "@/server/db/tenant";
 
-import { positionOrder, type Scope } from "./scope";
+import { doneColumns } from "./done-columns";
+
+import type { Scope } from "./scope";
 
 /**
  * Every task assigned to the user in the organization's active projects that they can see
@@ -32,19 +34,7 @@ export async function listMyWork(scope: Scope): Promise<MyWorkTask[]> {
       .orderBy(asc(tasks.dueDate), asc(tasks.title));
     if (rows.length === 0) return [];
 
-    const projectIds = [...new Set(rows.map((row) => row.projectId))];
-    const columns = await tx
-      .select({ id: boardColumns.id, projectId: boardColumns.projectId })
-      .from(boardColumns)
-      .where(inArray(boardColumns.projectId, projectIds))
-      .orderBy(positionOrder(boardColumns.position), asc(boardColumns.id));
-    // A board with a single column has no "done" column.
-    const lastColumn = new Map<string, string>();
-    for (const projectId of projectIds) {
-      const own = columns.filter((column) => column.projectId === projectId);
-      const last = own.at(-1);
-      if (own.length > 1 && last) lastColumn.set(projectId, last.id);
-    }
+    const lastColumn = await doneColumns(tx, [...new Set(rows.map((row) => row.projectId))]);
 
     const checklists = await tx
       .select({
@@ -64,7 +54,7 @@ export async function listMyWork(scope: Scope): Promise<MyWorkTask[]> {
 
     return rows.map(({ columnId, ...row }) => ({
       ...row,
-      done: lastColumn.get(row.projectId) === columnId,
+      done: lastColumn.get(row.projectId)?.id === columnId,
       checklist: checklistByTask.get(row.id) ?? null,
     }));
   });
