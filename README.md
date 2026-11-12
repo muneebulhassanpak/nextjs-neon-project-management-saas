@@ -27,7 +27,7 @@ Project management for agencies and teams. Plan work on Kanban boards and in spr
 | UI                  | Tailwind CSS 4, shadcn/ui, dark mode                                      |
 | Data                | Neon Postgres, Drizzle ORM, row-level security                            |
 | Auth                | Better Auth                                                               |
-| Real-time and files | Cloudflare Durable Objects and R2                                         |
+| Real-time and files | Cloudflare Workers and Durable Objects (WebSockets), R2                   |
 | Hosting             | Vercel                                                                    |
 | Quality             | ESLint (strict, type-aware), Prettier, Vitest, Playwright, GitHub Actions |
 
@@ -42,7 +42,11 @@ pnpm db:up && pnpm db:migrate
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, project structure and workflow.
+Open [http://localhost:3000](http://localhost:3000).
+
+Live boards are optional locally. To try them, run `pnpm realtime:dev` in a second terminal (it starts the realtime Worker on port 8787, no Cloudflare account needed) and set `REALTIME_URL` and `REALTIME_SECRET` in `.env.local` to the example values in `.env.example`.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, project structure and workflow.
 
 ## License
 

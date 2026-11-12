@@ -84,7 +84,7 @@ export function canManageProjects(role: Role): boolean {
 
 /**
  * Whether `role` may create and edit tasks and columns in a project. Members need to be
- * assigned to the project; clients never edit (they get a read-only portal in Phase 4).
+ * assigned to the project; clients never edit (they get a read-only portal in Phase 5).
  */
 export function canEditProject(role: Role, assigned: boolean): boolean {
   return canManageProjects(role) || (role === "member" && assigned);
