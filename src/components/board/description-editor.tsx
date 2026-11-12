@@ -65,6 +65,16 @@ export function DescriptionEditor({
     onSaveRef.current(latest.current);
   }
 
+  // Someone else changed it: show their version, unless this person is typing in it.
+  useEffect(() => {
+    const serialized = JSON.stringify(value);
+    if (!editor || editor.isFocused || serialized === lastSaved.current) return;
+    clearTimeout(timer.current);
+    lastSaved.current = serialized;
+    latest.current = value;
+    editor.commands.setContent((value as JSONContent | null) ?? "", { emitUpdate: false });
+  }, [editor, value]);
+
   // Save edits still waiting for the timer when the sheet closes.
   useEffect(
     () => () => {
