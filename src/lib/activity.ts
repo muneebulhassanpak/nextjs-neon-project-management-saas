@@ -26,6 +26,21 @@ export type ActivityEvent =
 
 export type ActivityAction = ActivityEvent["action"];
 
+/** The kinds of activity the Activity page filters by: the part of the action before the dot. */
+export const ACTIVITY_KINDS = ["task", "comment", "project", "member"] as const;
+export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
+export const ACTIVITY_KIND_LABELS: Record<ActivityKind, string> = {
+  task: "Tasks",
+  comment: "Comments",
+  project: "Projects",
+  member: "People",
+};
+
+export function isActivityKind(value: string): value is ActivityKind {
+  return (ACTIVITY_KINDS as readonly string[]).includes(value);
+}
+
 /** A piece of an activity sentence. `strong` parts are names (tasks, projects, columns). */
 export interface ActivityPart {
   text: string;
