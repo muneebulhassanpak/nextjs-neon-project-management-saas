@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { ActivityItem, ActivityPage } from "@/server/services/activity";
 
 /** Dates arrive as strings. Distributes over the union so `action` still narrows `metadata`. */
-type ActivityJson = ActivityItem extends infer T
+export type ActivityJson = ActivityItem extends infer T
   ? T extends ActivityItem
     ? Omit<T, "createdAt"> & { createdAt: string }
     : never
@@ -29,7 +29,7 @@ export interface ActivityFilter {
 }
 
 /**
- * Who did what, newest first, 20 at a time. Pass `orgSlug` to link each entry's project
+ * Who did what, newest first, 20 at a time (or just the newest `limit`). Pass `orgSlug` to link each entry's project
  * (for feeds that mix projects).
  */
 export function ActivityFeed({
@@ -37,12 +37,15 @@ export function ActivityFeed({
   filter = {},
   orgSlug,
   empty = "Nothing has happened here yet.",
+  limit,
   className,
 }: {
   orgId: string;
   filter?: ActivityFilter;
   orgSlug?: string;
   empty?: string;
+  /** Show only the newest few, with no "Show older activity" (the overview links to the log). */
+  limit?: number;
   className?: string;
 }) {
   const query = useInfiniteQuery({
@@ -76,7 +79,7 @@ export function ActivityFeed({
     return <p className="text-sm text-destructive">{query.error.message}</p>;
   }
 
-  const items = query.data.pages.flatMap((page) => page.items);
+  const items = query.data.pages.flatMap((page) => page.items).slice(0, limit);
   if (items.length === 0) {
     return (
       <div className={cn("flex flex-col items-center gap-2 py-8 text-center", className)}>
@@ -90,46 +93,10 @@ export function ActivityFeed({
     <div className={cn("grid gap-3", className)}>
       <ol className="grid gap-4">
         {items.map((item) => (
-          <li key={item.id} className="flex gap-3 text-sm">
-            {item.actor ? (
-              <PersonAvatar person={item.actor} className="mt-px" />
-            ) : (
-              <span className="mt-px size-6 shrink-0 rounded-full bg-muted" />
-            )}
-            <div className="grid min-w-0 gap-0.5">
-              <p className="leading-snug text-muted-foreground">
-                <span className="font-medium text-foreground">{item.actor?.name ?? "Someone"}</span>{" "}
-                {describeActivity(item).map((part, i) =>
-                  part.strong ? (
-                    <span key={i} className="font-medium text-foreground">
-                      {part.text}
-                    </span>
-                  ) : (
-                    <span key={i}>{part.text}</span>
-                  ),
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {orgSlug && item.project && (
-                  <>
-                    <Link
-                      href={`/${orgSlug}/projects/${item.project.id}`}
-                      className="hover:text-foreground hover:underline"
-                    >
-                      {item.project.name}
-                    </Link>
-                    {" · "}
-                  </>
-                )}
-                <time dateTime={item.createdAt} title={new Date(item.createdAt).toLocaleString()}>
-                  {formatRelativeTime(new Date(item.createdAt))}
-                </time>
-              </p>
-            </div>
-          </li>
+          <ActivityEntry key={item.id} item={item} orgSlug={orgSlug} />
         ))}
       </ol>
-      {query.hasNextPage && (
+      {query.hasNextPage && limit === undefined && (
         <Button
           variant="ghost"
           size="sm"
@@ -141,5 +108,48 @@ export function ActivityFeed({
         </Button>
       )}
     </div>
+  );
+}
+
+/** One entry: who did what, where and when. */
+export function ActivityEntry({ item, orgSlug }: { item: ActivityJson; orgSlug?: string }) {
+  return (
+    <li className="flex gap-3 text-sm">
+      {item.actor ? (
+        <PersonAvatar person={item.actor} className="mt-px" />
+      ) : (
+        <span className="mt-px size-6 shrink-0 rounded-full bg-muted" />
+      )}
+      <div className="grid min-w-0 gap-0.5">
+        <p className="leading-snug text-muted-foreground">
+          <span className="font-medium text-foreground">{item.actor?.name ?? "Someone"}</span>{" "}
+          {describeActivity(item).map((part, i) =>
+            part.strong ? (
+              <span key={i} className="font-medium text-foreground">
+                {part.text}
+              </span>
+            ) : (
+              <span key={i}>{part.text}</span>
+            ),
+          )}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {orgSlug && item.project && (
+            <>
+              <Link
+                href={`/${orgSlug}/projects/${item.project.id}`}
+                className="hover:text-foreground hover:underline"
+              >
+                {item.project.name}
+              </Link>
+              {" · "}
+            </>
+          )}
+          <time dateTime={item.createdAt} title={new Date(item.createdAt).toLocaleString()}>
+            {formatRelativeTime(new Date(item.createdAt))}
+          </time>
+        </p>
+      </div>
+    </li>
   );
 }
