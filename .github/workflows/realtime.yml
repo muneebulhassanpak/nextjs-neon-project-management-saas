@@ -1,0 +1,42 @@
+name: Deploy realtime
+
+# Deploys the realtime Worker (realtime/) to Cloudflare when it changes on main.
+# Needs the CLOUDFLARE_API_TOKEN secret ("Edit Cloudflare Workers" template); without it the
+# job is skipped. REALTIME_SECRET is set once on the Worker with `wrangler secret put` and
+# survives deploys.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "realtime/**"
+      - ".github/workflows/realtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realtime-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ac7fc00f9400bf2cebe1e67fdfa3cc09
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Skip without a Cloudflare token
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::CLOUDFLARE_API_TOKEN is not set; the realtime Worker was not deployed."
+      - uses: actions/checkout@v7
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - uses: ./.github/actions/setup
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - name: Deploy
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: pnpm realtime:deploy
+      - name: Check it answers
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: curl --fail --silent --retry 5 --retry-delay 3 https://stackboard-realtime.muneebulhassan121.workers.dev/health
