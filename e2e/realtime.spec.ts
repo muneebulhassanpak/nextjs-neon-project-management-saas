@@ -18,7 +18,7 @@ test("changes and who's looking show up live on a teammate's board", async ({ br
   // A task the owner adds appears on the teammate's board without a reload.
   await addTask(owner, "To do", "Write copy");
   const card = (page: typeof mate, column: string) =>
-    page.getByRole("region", { name: column }).getByRole("button", { name: /Write copy/ });
+    page.getByRole("region", { name: column }).getByRole("button", { name: /^Write copy/ });
   await expect(card(mate, "To do")).toBeVisible();
 
   // The teammate opens it and moves it; the owner sees the move and who's looking.

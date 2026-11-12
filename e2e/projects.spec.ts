@@ -45,19 +45,19 @@ test("an owner plans work on a board, and the order survives a reload", async ({
   // Reorder within a column, then move a card to another column.
   await drag(
     page,
-    todo.getByRole("button", { name: /Collect logos/ }),
+    todo.getByRole("button", { name: /^Collect logos/ }),
     titlesIn(page, "To do").first(),
   );
   await expect(titlesIn(page, "To do")).toHaveText(["Collect logos", "Write copy", "Pick fonts"]);
   await drag(
     page,
-    todo.getByRole("button", { name: /Pick fonts/ }),
+    todo.getByRole("button", { name: /^Pick fonts/ }),
     page.getByRole("region", { name: "Review" }),
   );
   await expect(titlesIn(page, "Review")).toHaveText(["Pick fonts"]);
 
   // Open a task and change it.
-  await page.getByRole("button", { name: /Write copy/ }).click();
+  await page.getByRole("button", { name: /^Write copy/ }).click();
   const sheet = page.getByRole("dialog");
   await sheet.getByRole("combobox", { name: "Priority" }).click();
   await page.getByRole("option", { name: "Urgent" }).click();

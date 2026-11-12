@@ -13,7 +13,7 @@ test("a mention notifies a teammate, and changes show up in the activity feed", 
 
   // The owner mentions the teammate in a comment, picking them from the suggestions.
   await owner.goto(projectUrl);
-  await owner.getByRole("button", { name: /Write copy/ }).click();
+  await owner.getByRole("button", { name: /^Write copy/ }).click();
   const sheet = owner.getByRole("dialog");
   const box = sheet.getByRole("combobox", { name: "Comment" });
   await box.fill("@Ta");

@@ -7,17 +7,6 @@ import { useState } from "react";
 
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { PersonAvatar } from "@/components/projects/people";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -46,7 +35,6 @@ import { canDeleteTask } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import {
   createLabelAction,
-  deleteTaskAction,
   moveTaskAction,
   setTaskLabelsAction,
   updateTaskAction,
@@ -67,6 +55,7 @@ import {
 import { DescriptionEditor } from "./description-editor";
 import { LabelChip, labelDot } from "./label-chip";
 import { TaskViewers } from "./presence";
+import { TaskChecklist } from "./task-checklist";
 import { CAPTURES_ESCAPE, TaskComments, useComments } from "./task-comments";
 import { formatDueDate, PriorityIcon } from "./task-meta";
 
@@ -77,12 +66,15 @@ export function TaskSheet({
   board,
   viewers,
   onClose,
+  onDelete,
 }: {
   taskId: string | null;
   board: Board;
   /** Others with this task open. */
   viewers: PresenceEntry[];
   onClose: () => void;
+  /** Deletes the task (with an Undo toast). */
+  onDelete: (task: BoardTask) => void;
 }) {
   return (
     <Sheet
@@ -106,7 +98,7 @@ export function TaskSheet({
             taskId={taskId}
             board={board}
             viewers={viewers}
-            onClose={onClose}
+            onDelete={onDelete}
           />
         )}
       </SheetContent>
@@ -118,12 +110,12 @@ function TaskPanel({
   taskId,
   board,
   viewers,
-  onClose,
+  onDelete,
 }: {
   taskId: string;
   board: Board;
   viewers: PresenceEntry[];
-  onClose: () => void;
+  onDelete: (task: BoardTask) => void;
 }) {
   const { orgId, userId, role, assigned, canEdit } = useBoardContext();
   const queryClient = useQueryClient();
@@ -236,6 +228,12 @@ function TaskPanel({
         )}
       </div>
 
+      {detail.data && (detail.data.checklist.length > 0 || canEdit) && (
+        <div className="border-t p-6">
+          <TaskChecklist taskId={taskId} items={detail.data.checklist} editable={canEdit} />
+        </div>
+      )}
+
       <Tabs defaultValue="comments" className="gap-4 border-t p-6">
         <TabsList variant="line" className="-ml-1.5">
           <TabsTrigger value="comments">
@@ -265,7 +263,18 @@ function TaskPanel({
           {detail.data &&
             `Created${detail.data.createdBy ? ` by ${detail.data.createdBy.name}` : ""} on ${formatDate(new Date(detail.data.createdAt))}`}
         </span>
-        {deletable && <DeleteTask task={task} onDeleted={onClose} />}
+        {deletable && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => {
+              onDelete(task);
+            }}
+          >
+            <Trash2 aria-hidden /> Delete
+          </Button>
+        )}
       </div>
     </>
   );
@@ -531,43 +540,5 @@ function LabelsField({
       )}
       {!editable && task.labels.length === 0 && <span className="text-muted-foreground">None</span>}
     </div>
-  );
-}
-
-function DeleteTask({ task, onDeleted }: { task: BoardTask; onDeleted: () => void }) {
-  const { orgId } = useBoardContext();
-  const remove = useBoardMutation(deleteTaskAction, (board) => ({
-    ...board,
-    tasks: board.tasks.filter((t) => t.id !== task.id),
-  }));
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-          <Trash2 aria-hidden /> Delete
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this task?</AlertDialogTitle>
-          <AlertDialogDescription>
-            “{task.title}” and its description will be deleted. This can&apos;t be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={() => {
-              onDeleted();
-              void remove.run({ orgId, taskId: task.id });
-            }}
-          >
-            Delete task
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }

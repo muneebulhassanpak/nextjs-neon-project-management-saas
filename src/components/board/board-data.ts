@@ -20,6 +20,7 @@ export interface BoardContextValue {
   orgId: string;
   projectId: string;
   userId: string;
+  userName: string;
   role: Role;
   /** Whether the user is assigned to the project (owners and admins may not be). */
   assigned: boolean;
