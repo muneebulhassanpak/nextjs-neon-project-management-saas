@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   date,
   foreignKey,
   index,
@@ -287,6 +288,51 @@ export const taskLabels = pgTable(
       )`,
     }),
   ],
+);
+
+/**
+ * A task's checklist (its subtasks). Visible with the task, and editable by anyone who can edit
+ * the task's project: the subqueries run under the tasks policies.
+ */
+export const checklistItems = pgTable(
+  "checklist_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    taskId: uuid("task_id").notNull(),
+    title: text("title").notNull(),
+    done: boolean("done").default(false).notNull(),
+    /** Fractional index within the checklist; compare with `collate "C"`. */
+    position: text("position").notNull(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => {
+    const taskEditable = sql`${inCurrentOrg(t.orgId)} and exists (
+      select 1 from tasks where tasks.id = ${t.taskId} and app_can_edit_project(tasks.org_id, tasks.project_id)
+    )`;
+    return [
+      foreignKey({
+        name: "checklist_items_task_fk",
+        columns: [t.taskId, t.orgId],
+        foreignColumns: [tasks.id, tasks.orgId],
+      }).onDelete("cascade"),
+      index("checklist_items_task_idx").on(t.taskId),
+      pgPolicy("checklist_items_select", {
+        for: "select",
+        to: appUser,
+        using: sql`${inCurrentOrg(t.orgId)} and exists (select 1 from tasks where tasks.id = ${t.taskId})`,
+      }),
+      pgPolicy("checklist_items_insert", { for: "insert", to: appUser, withCheck: taskEditable }),
+      pgPolicy("checklist_items_update", {
+        for: "update",
+        to: appUser,
+        using: taskEditable,
+        withCheck: taskEditable,
+      }),
+      pgPolicy("checklist_items_delete", { for: "delete", to: appUser, using: taskEditable }),
+    ];
+  },
 );
 
 /** Select/insert/update/delete policies for a table whose rows belong to one project. */
