@@ -1,9 +1,11 @@
+import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { GET as activityRoute } from "@/app/api/orgs/[orgId]/activity/route";
 import { GET as notificationsRoute } from "@/app/api/orgs/[orgId]/notifications/route";
 import { GET as commentsRoute } from "@/app/api/orgs/[orgId]/tasks/[taskId]/comments/route";
 import { describeActivity } from "@/lib/activity";
+import { addDays, todayIn } from "@/lib/dates";
 import { mentionToken } from "@/lib/mentions";
 import {
   createTaskAction,
@@ -20,6 +22,8 @@ import {
   markNotificationsReadAction,
 } from "@/server/actions/collaboration";
 import { setProjectArchivedAction, setProjectMembersAction } from "@/server/actions/projects";
+import { db } from "@/server/db/client";
+import { activityLog } from "@/server/db/schema";
 import type { ActionResult } from "@/server/errors";
 import {
   LOG_PAGE_SIZE,
@@ -209,6 +213,38 @@ describe("activity log", () => {
         { projectId: "00000000-0000-4000-8000-000000000000" },
       ),
     ).toMatchObject({ items: [], page: 1, pageCount: 1, total: 0 });
+  });
+
+  it("filters the Activity page by person, kind, days and search", async () => {
+    const { org, owner, alice, taskId } = await setup();
+    actAs(alice);
+    unwrap(await addCommentAction({ orgId: org.id, taskId, body: "Looking now" }));
+    const owners = { userId: owner.id, orgId: org.id };
+    const log = async (filter: Parameters<typeof listActivityLog>[1]) =>
+      (await listActivityLog(owners, filter)).items.map(sentence);
+
+    expect(await log({ actorId: alice.id })).toEqual([`${alice.name} commented on Fix login`]);
+    expect(await log({ kind: "project" })).toEqual(["Owner created the project Website"]);
+    expect(await log({ search: "FIX log" })).toEqual([
+      `${alice.name} commented on Fix login`,
+      "Owner created Fix login in To do",
+    ]);
+    // Searching for the person who did it, and wildcards taken literally.
+    expect(await log({ search: alice.name })).toHaveLength(1);
+    expect(await log({ search: "%" })).toEqual([]);
+
+    // Days count in the viewer's time zone: 23:30 UTC yesterday is today in Karachi (+5).
+    const today = todayIn("UTC");
+    await db
+      .update(activityLog)
+      .set({ createdAt: sql`date_trunc('day', now(), 'UTC') - interval '30 minutes'` })
+      .where(and(eq(activityLog.orgId, org.id), eq(activityLog.action, "comment.added")));
+    expect(await log({ kind: "comment", from: today, to: today })).toEqual([]);
+    expect(
+      await log({ kind: "comment", from: today, to: today, timeZone: "Asia/Karachi" }),
+    ).toHaveLength(1);
+    expect(await log({ kind: "comment", to: addDays(today, -1) })).toHaveLength(1);
+    expect(await log({ kind: "comment", from: today, timeZone: "Not/AZone" })).toEqual([]);
   });
 });
 

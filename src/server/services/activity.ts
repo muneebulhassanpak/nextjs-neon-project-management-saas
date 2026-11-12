@@ -1,7 +1,8 @@
 import "server-only";
-import { and, count, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, like, or, sql, type SQL } from "drizzle-orm";
 
-import type { ActivityAction, ActivityEvent } from "@/lib/activity";
+import type { ActivityAction, ActivityEvent, ActivityKind } from "@/lib/activity";
+import { isTimeZone } from "@/lib/dates";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import { activityLog, projects, user } from "@/server/db/schema";
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
@@ -158,16 +159,60 @@ export interface ActivityLogPage {
   total: number;
 }
 
-/** One numbered page of the activity log (for the Activity page), optionally for one project. */
+export interface ActivityLogFilter {
+  page?: number;
+  projectId?: string;
+  /** Only what this person did. */
+  actorId?: string;
+  kind?: ActivityKind;
+  /** First and last day to include (YYYY-MM-DD), in `timeZone` (default UTC). */
+  from?: string;
+  to?: string;
+  timeZone?: string;
+  /** Matches task, project, column and people names in the entry, and who did it. */
+  search?: string;
+}
+
+/** Escapes LIKE wildcards so a search for "50%" means the text "50%". */
+function likePattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+function logConditions(scope: Scope, filter: ActivityLogFilter): SQL[] {
+  const conditions = filterConditions(scope, filter);
+  if (filter.actorId) conditions.push(eq(activityLog.actorId, filter.actorId));
+  if (filter.kind) conditions.push(like(activityLog.action, `${filter.kind}.%`));
+  const zone = filter.timeZone && isTimeZone(filter.timeZone) ? filter.timeZone : "UTC";
+  const day = sql`(${activityLog.createdAt} at time zone ${zone})::date`;
+  if (filter.from) conditions.push(sql`${day} >= ${filter.from}::date`);
+  if (filter.to) conditions.push(sql`${day} <= ${filter.to}::date`);
+  const search = filter.search?.trim();
+  if (search) {
+    const pattern = likePattern(search);
+    const named = (key: string) => ilike(sql`${activityLog.metadata}->>${key}::text`, pattern);
+    const condition = or(
+      ...["title", "name", "from", "to", "column", "assignee"].map(named),
+      ilike(sql`${activityLog.metadata}->>'labels'`, pattern),
+      ilike(projects.name, pattern),
+      ilike(user.name, pattern),
+    );
+    if (condition) conditions.push(condition);
+  }
+  return conditions;
+}
+
+/** One numbered page of the activity log (for the Activity page), filtered. */
 export async function listActivityLog(
   scope: Scope,
-  filter: { page?: number; projectId?: string } = {},
+  filter: ActivityLogFilter = {},
 ): Promise<ActivityLogPage> {
-  const conditions = filterConditions(scope, filter);
+  const conditions = logConditions(scope, filter);
   return withOrgContext(scope, async (tx) => {
     const [counted] = await tx
       .select({ total: count() })
       .from(activityLog)
+      .leftJoin(projects, eq(projects.id, activityLog.projectId))
+      .leftJoin(user, eq(user.id, activityLog.actorId))
       .where(and(...conditions));
     const total = counted?.total ?? 0;
     const pageCount = Math.max(1, Math.ceil(total / LOG_PAGE_SIZE));
