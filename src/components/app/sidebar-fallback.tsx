@@ -10,12 +10,12 @@ import {
 /** Shown while the sidebar's session and organization data load. */
 export function SidebarFallback() {
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader>
         <SidebarMenuSkeleton showIcon />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenu className="p-2">
+        <SidebarMenu className="gap-1 p-2">
           {[1, 2, 3].map((i) => (
             <SidebarMenuItem key={i}>
               <SidebarMenuSkeleton showIcon />
