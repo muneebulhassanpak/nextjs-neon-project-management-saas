@@ -9,6 +9,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Checklists inside tasks: add, tick off, rename and remove steps. The card shows progress (3/5).
+- Bulk actions: select tasks with their checkbox, Shift- or Cmd-click, or `x`, then move, assign, prioritise, label or delete them together from a bar at the bottom. Works in the list view too, with select all.
+- Undo for deletes: deleting tasks shows an Undo toast for 5 seconds before anything is removed.
+- My work: every task assigned to you across projects, grouped into Overdue, Today, Next 7 days, Later and No date, with done tasks on request.
+- Reactions on comments (👍 ❤️ 🎉 👀 ✅ 😄), with who reacted shown on hover.
+- "Grace is typing…" under the comments when a teammate is writing one.
+
 - Live boards: when someone adds, edits, moves or deletes a task, changes a column or comments, everyone else on the board sees it within a moment, without reloading. Built on a Cloudflare Worker with one Durable Object per board; the app stays the only source of truth.
 - Presence: the board shows who else has it open, and a task shows who else is looking at it. A "Live" indicator turns to "Reconnecting…" if the connection drops, and the board catches up once it's back.
 - An open task's description updates when someone else edits it, unless you're typing in it.

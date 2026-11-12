@@ -12,7 +12,7 @@ Project management for agencies and teams. Plan work on Kanban boards and in spr
 ## What it will do
 
 - **Organizations and roles.** Invite your team as owners, admins or members, and your clients with read-only access.
-- **Projects and Kanban boards.** Drag tasks between columns, assign people, set priorities and due dates.
+- **Projects and Kanban boards.** Drag tasks between columns, assign people, set priorities and due dates, break tasks into checklists and change many at once. "My work" collects everything assigned to you.
 - **Sprints.** Plan from the backlog, then track progress with burndown and velocity charts.
 - **Client portal.** Clients see their projects' progress and the tasks you share, nothing else.
 - **Time tracking and invoices.** Log hours on tasks and turn them into invoice PDFs.
