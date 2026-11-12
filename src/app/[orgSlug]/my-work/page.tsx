@@ -13,7 +13,7 @@ export default async function MyWorkPage({ params }: PageProps<"/[orgSlug]/my-wo
   const tasks = await listMyWork({ userId: user.id, orgId: org.id });
 
   return (
-    <div className="grid max-w-4xl gap-6">
+    <div className="grid gap-6">
       <PageHeader
         title="My work"
         description={`Everything assigned to you in ${org.name}, by when it's due.`}
