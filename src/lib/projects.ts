@@ -25,17 +25,18 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
 /** Columns every new project starts with. They can be renamed, reordered and deleted. */
 export const DEFAULT_COLUMNS = ["To do", "In progress", "Review", "Done"] as const;
 
+/** In the order new labels get them: neighbours differ in hue, so the first few stand apart. */
 export const LABEL_COLORS = [
-  "gray",
-  "red",
-  "orange",
+  "blue",
+  "purple",
   "amber",
   "green",
-  "teal",
-  "blue",
-  "indigo",
-  "purple",
   "pink",
+  "teal",
+  "red",
+  "indigo",
+  "orange",
+  "gray",
 ] as const;
 export type LabelColor = (typeof LABEL_COLORS)[number];
 
