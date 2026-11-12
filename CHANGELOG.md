@@ -13,6 +13,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Project cards show progress (done of total, with a bar), what's overdue and the next due date.
 - Each person gets their own avatar colour, and new labels get colours that stand apart.
 - Dates ("today", overdue, due this week) follow the viewer's time zone.
+- The Activity page filters by search, dates (presets or any range), person, project and type of change, and the filters stay in the link.
 
 - Checklists inside tasks: add, tick off, rename and remove steps. The card shows progress (3/5).
 - Bulk actions: select tasks with their checkbox, Shift- or Cmd-click, or `x`, then move, assign, prioritise, label or delete them together from a bar at the bottom. Works in the list view too, with select all.
