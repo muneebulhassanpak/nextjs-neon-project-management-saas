@@ -46,7 +46,7 @@ async function OrgSidebar({ params }: Pick<LayoutProps<"/[orgSlug]">, "params">)
     <AppSidebar
       current={{ ...org, role }}
       orgs={memberships.map((m) => ({ ...m.org, role: m.role }))}
-      user={{ name: user.name, email: user.email, image: user.image }}
+      user={{ id: user.id, name: user.name, email: user.email, image: user.image }}
     />
   );
 }

@@ -17,9 +17,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
+import { avatarTone } from "@/lib/avatar-tone";
 import { initials } from "@/lib/initials";
+import { cn } from "@/lib/utils";
 
 export interface UserSummary {
+  id: string;
   name: string;
   email: string;
   image: string | null | undefined;
@@ -37,7 +40,9 @@ export function UserMenu({ user }: { user: UserSummary }) {
             <SidebarMenuButton size="lg" aria-label="Account menu">
               <Avatar className="size-8">
                 {user.image && <AvatarImage src={user.image} alt="" />}
-                <AvatarFallback className="text-xs">{initials(user.name)}</AvatarFallback>
+                <AvatarFallback className={cn("text-xs font-medium", avatarTone(user.id))}>
+                  {initials(user.name)}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>

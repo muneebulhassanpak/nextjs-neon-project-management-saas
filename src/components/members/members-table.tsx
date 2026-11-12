@@ -37,8 +37,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { avatarTone } from "@/lib/avatar-tone";
 import { initials } from "@/lib/initials";
 import { canChangeRole, canRemoveMember, ROLE_LABELS, ROLES, type Role } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 import { leaveOrganization, removeMember, updateMemberRole } from "@/server/actions/members";
 
 import { RoleBadge } from "./role-badge";
@@ -122,7 +124,11 @@ export function MembersTable({
                     <div className="flex items-center gap-3">
                       <Avatar className="size-8">
                         {member.image && <AvatarImage src={member.image} alt="" />}
-                        <AvatarFallback className="text-xs">{initials(member.name)}</AvatarFallback>
+                        <AvatarFallback
+                          className={cn("text-xs font-medium", avatarTone(member.userId))}
+                        >
+                          {initials(member.name)}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="grid min-w-0">
                         <span className="truncate font-medium">
