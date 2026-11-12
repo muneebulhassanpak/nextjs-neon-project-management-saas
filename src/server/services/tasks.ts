@@ -7,6 +7,7 @@ import type { TaskDescription, TaskPriority } from "@/lib/projects";
 import { labels, taskLabels, tasks, user } from "@/server/db/schema";
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
+import { publishBoardEvent } from "@/server/realtime";
 
 import { logActivity, loggedRecently } from "./activity";
 import { assignablePeople, findColumn, place, tasksIn, type BoardLabel } from "./board";
@@ -20,7 +21,7 @@ export async function createTask(
   scope: Scope,
   input: { columnId: string; title: string },
 ): Promise<{ id: string; position: string }> {
-  return withOrgContext(scope, async (tx) => {
+  const { task, projectId } = await withOrgContext(scope, async (tx) => {
     const column = await findColumn(tx, input.columnId);
     const position = positionAtEnd(await tasksIn(tx, column.id, { lock: true }));
     const [task] = await tx
@@ -41,8 +42,10 @@ export async function createTask(
       taskId: task.id,
       metadata: { title: input.title, column: column.name },
     });
-    return task;
+    return { task, projectId: column.projectId };
   });
+  publishBoardEvent(projectId, { type: "task.created", taskId: task.id, actorId: scope.userId });
+  return task;
 }
 
 export interface TaskDetail {
@@ -119,13 +122,13 @@ export async function updateTask(
   taskId: string,
   changes: TaskChanges,
 ): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const projectId = await withOrgContext(scope, async (tx) => {
     const task = await findTask(tx, taskId);
     const people = await assignablePeople(tx, scope.orgId, task.projectId);
     if (changes.assigneeId && !people.some((person) => person.id === changes.assigneeId)) {
       throw new ValidationError("Assign the task to someone on this project.");
     }
-    if (Object.keys(changes).length === 0) return;
+    if (Object.keys(changes).length === 0) return null;
     const updated = await tx
       .update(tasks)
       .set(changes)
@@ -158,7 +161,10 @@ export async function updateTask(
         await notify(tx, scope, { type: "assigned", taskId, recipients: [assignee.id] });
       }
     }
+    return task.projectId;
   });
+  if (projectId)
+    publishBoardEvent(projectId, { type: "task.updated", taskId, actorId: scope.userId });
 }
 
 /**
@@ -169,7 +175,7 @@ export async function moveTask(
   scope: Scope,
   input: { taskId: string; columnId: string; afterTaskId: string | null },
 ): Promise<{ position: string }> {
-  return withOrgContext(scope, async (tx) => {
+  const { position, projectId } = await withOrgContext(scope, async (tx) => {
     const task = await findTask(tx, input.taskId);
     const column = await findColumn(tx, input.columnId);
     if (column.projectId !== task.projectId) {
@@ -188,8 +194,10 @@ export async function moveTask(
         metadata: { title: task.title, from: from.name, to: column.name },
       });
     }
-    return { position };
+    return { position, projectId: task.projectId };
   });
+  publishBoardEvent(projectId, { type: "task.moved", taskId: input.taskId, actorId: scope.userId });
+  return { position };
 }
 
 /** Replaces the task's labels with `labelIds`. */
@@ -198,7 +206,7 @@ export async function setTaskLabels(
   taskId: string,
   labelIds: string[],
 ): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const projectId = await withOrgContext(scope, async (tx) => {
     const task = await findTask(tx, taskId);
     const wanted = [...new Set(labelIds)];
     const found =
@@ -218,7 +226,7 @@ export async function setTaskLabels(
       .where(eq(taskLabels.taskId, taskId));
     const unchanged =
       current.length === wanted.length && current.every((label) => wanted.includes(label.id));
-    if (unchanged) return;
+    if (unchanged) return null;
 
     await logActivity(tx, scope, {
       action: "task.labeled",
@@ -232,12 +240,15 @@ export async function setTaskLabels(
         .insert(taskLabels)
         .values(wanted.map((labelId) => ({ taskId, labelId, orgId: scope.orgId })));
     }
+    return task.projectId;
   });
+  if (projectId)
+    publishBoardEvent(projectId, { type: "task.updated", taskId, actorId: scope.userId });
 }
 
 /** Deletes a task. Members can delete only the tasks they created (enforced by RLS). */
 export async function deleteTask(scope: Scope, taskId: string): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const projectId = await withOrgContext(scope, async (tx) => {
     const task = await findTask(tx, taskId);
     const deleted = await tx.delete(tasks).where(eq(tasks.id, taskId)).returning({ id: tasks.id });
     if (deleted.length === 0) throw new ForbiddenError("You can only delete tasks you created.");
@@ -247,7 +258,9 @@ export async function deleteTask(scope: Scope, taskId: string): Promise<void> {
       taskId,
       metadata: { title: task.title },
     });
+    return task.projectId;
   });
+  publishBoardEvent(projectId, { type: "task.deleted", taskId, actorId: scope.userId });
 }
 
 async function findTask(tx: Transaction, taskId: string) {

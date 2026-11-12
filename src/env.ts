@@ -39,6 +39,10 @@ export const env = createEnv({
     EMAIL_MODE: z.enum(["console", "resend"]).default("console"),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().default("Stackboard <onboarding@resend.dev>"),
+
+    // Live boards (Cloudflare Worker in realtime/). Both unset means boards update on refetch only.
+    REALTIME_URL: z.url().optional(),
+    REALTIME_SECRET: z.string().min(32).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
@@ -57,6 +61,8 @@ export const env = createEnv({
     EMAIL_MODE: process.env.EMAIL_MODE,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
+    REALTIME_URL: process.env.REALTIME_URL,
+    REALTIME_SECRET: process.env.REALTIME_SECRET,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },
   // Treat empty strings (e.g. `DATABASE_URL=` in .env.local) as unset, so defaults apply.

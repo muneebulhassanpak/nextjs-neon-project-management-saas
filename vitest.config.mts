@@ -36,7 +36,13 @@ export default defineConfig({
           globalSetup: ["./tests/setup/test-database.ts"],
           setupFiles: ["./tests/setup/fail-on-console-error.ts", "./tests/setup/request-scope.ts"],
           // Integration tests never touch DATABASE_URL from .env.local.
-          env: { DATABASE_URL: testDatabaseUrl, TEST_DATABASE_URL: testDatabaseUrl },
+          env: {
+            DATABASE_URL: testDatabaseUrl,
+            TEST_DATABASE_URL: testDatabaseUrl,
+            // Live updates on, pointed nowhere: tests read the events instead of sending them.
+            REALTIME_URL: "http://realtime.test",
+            REALTIME_SECRET: "integration-realtime-secret-0000000000",
+          },
           fileParallelism: false,
         },
       },
