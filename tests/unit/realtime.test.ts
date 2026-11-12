@@ -117,6 +117,32 @@ describe("message parsing", () => {
     expect(parseServerMessage("[]")).toBeNull();
   });
 
+  it("handles typing: from the browser with a task, from the room with who's typing", () => {
+    expect(parseClientMessage(JSON.stringify({ type: "typing", taskId: TASK }))).toEqual({
+      type: "typing",
+      taskId: TASK,
+    });
+    expect(parseClientMessage('{"type":"typing","taskId":null}')).toBeNull();
+
+    const viewer = { id: "u", name: "Grace", image: null };
+    expect(
+      parseServerMessage(
+        JSON.stringify({ type: "typing", viewer: { ...viewer, extra: 1 }, taskId: TASK }),
+      ),
+    ).toEqual({ type: "typing", viewer, taskId: TASK });
+    expect(
+      parseServerMessage(JSON.stringify({ type: "typing", viewer: {}, taskId: TASK })),
+    ).toBeNull();
+    expect(parseServerMessage(JSON.stringify({ type: "typing", viewer }))).toBeNull();
+  });
+
+  it("accepts the bulk change event", () => {
+    expect(parseBoardEvent({ type: "board.changed", actorId: "u" })).toEqual({
+      type: "board.changed",
+      actorId: "u",
+    });
+  });
+
   it("knows a room id when it sees one", () => {
     expect(isRoomId(ROOM)).toBe(true);
     expect(isRoomId("../admin")).toBe(false);

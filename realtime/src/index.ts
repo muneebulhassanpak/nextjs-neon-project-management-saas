@@ -90,6 +90,11 @@ export class BoardRoom extends DurableObject<Env> {
     const parsed = parseClientMessage(message);
     if (!parsed) return;
     const entry = ws.deserializeAttachment() as PresenceEntry;
+    if (parsed.type === "typing") {
+      const viewer: Viewer = { id: entry.id, name: entry.name, image: entry.image };
+      this.send({ type: "typing", viewer, taskId: parsed.taskId }, ws);
+      return;
+    }
     if (entry.taskId === parsed.taskId) return;
     ws.serializeAttachment({ ...entry, taskId: parsed.taskId });
     this.sendPresence();
