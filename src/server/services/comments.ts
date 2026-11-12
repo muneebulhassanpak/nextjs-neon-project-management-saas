@@ -5,6 +5,7 @@ import { extractMentions } from "@/lib/mentions";
 import { comments, tasks, user } from "@/server/db/schema";
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
+import { publishBoardEvent } from "@/server/realtime";
 
 import { logActivity } from "./activity";
 import { assignablePeople } from "./board";
@@ -51,7 +52,7 @@ export async function addComment(
   taskId: string,
   body: string,
 ): Promise<{ id: string }> {
-  return withOrgContext(scope, async (tx) => {
+  const { comment, projectId } = await withOrgContext(scope, async (tx) => {
     const task = await findTask(tx, taskId);
     const [comment] = await tx
       .insert(comments)
@@ -66,13 +67,15 @@ export async function addComment(
       metadata: { title: task.title },
     });
     await notifyMentions(tx, scope, task, comment.id, extractMentions(body));
-    return comment;
+    return { comment, projectId: task.projectId };
   });
+  publishBoardEvent(projectId, { type: "comment.changed", taskId, actorId: scope.userId });
+  return comment;
 }
 
 /** Edits the user's own comment. People newly mentioned in the edit are notified. */
 export async function editComment(scope: Scope, commentId: string, body: string): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const task = await withOrgContext(scope, async (tx) => {
     const [existing] = await tx
       .select({ taskId: comments.taskId, body: comments.body, authorId: comments.authorId })
       .from(comments)
@@ -86,15 +89,22 @@ export async function editComment(scope: Scope, commentId: string, body: string)
     await tx.update(comments).set({ body, editedAt: new Date() }).where(eq(comments.id, commentId));
     const before = new Set(extractMentions(existing.body));
     const added = extractMentions(body).filter((id) => !before.has(id));
-    await notifyMentions(tx, scope, await findTask(tx, existing.taskId), commentId, added);
+    const task = await findTask(tx, existing.taskId);
+    await notifyMentions(tx, scope, task, commentId, added);
+    return task;
+  });
+  publishBoardEvent(task.projectId, {
+    type: "comment.changed",
+    taskId: task.id,
+    actorId: scope.userId,
   });
 }
 
 /** Deletes a comment: the author's own, or any comment for owners and admins (RLS decides). */
 export async function deleteComment(scope: Scope, commentId: string): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const task = await withOrgContext(scope, async (tx) => {
     const [existing] = await tx
-      .select({ id: comments.id })
+      .select({ taskId: comments.taskId })
       .from(comments)
       .where(eq(comments.id, commentId))
       .limit(1);
@@ -104,6 +114,12 @@ export async function deleteComment(scope: Scope, commentId: string): Promise<vo
       .where(eq(comments.id, commentId))
       .returning({ id: comments.id });
     if (deleted.length === 0) throw new ForbiddenError("You can only delete your own comments.");
+    return findTask(tx, existing.taskId);
+  });
+  publishBoardEvent(task.projectId, {
+    type: "comment.changed",
+    taskId: task.id,
+    actorId: scope.userId,
   });
 }
 

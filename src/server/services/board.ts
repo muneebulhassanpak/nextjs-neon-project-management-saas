@@ -14,6 +14,7 @@ import {
 } from "@/server/db/schema";
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { NotFoundError, ValidationError } from "@/server/errors";
+import { publishBoardEvent } from "@/server/realtime";
 
 import { positionOrder, type Scope } from "./scope";
 
@@ -167,7 +168,7 @@ export async function createColumn(
   projectId: string,
   name: string,
 ): Promise<BoardColumn> {
-  return withOrgContext(scope, async (tx) => {
+  const column = await withOrgContext(scope, async (tx) => {
     const existing = await columnsOf(tx, projectId);
     if (existing.length === 0) throw new NotFoundError("This project doesn't exist.");
     const [column] = await tx
@@ -177,17 +178,21 @@ export async function createColumn(
     if (!column) throw new Error("Column insert returned no row");
     return column;
   });
+  publishBoardEvent(projectId, { type: "column.changed", actorId: scope.userId });
+  return column;
 }
 
 export async function renameColumn(scope: Scope, columnId: string, name: string): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
-    const updated = await tx
+  const projectId = await withOrgContext(scope, async (tx) => {
+    const [updated] = await tx
       .update(boardColumns)
       .set({ name })
       .where(eq(boardColumns.id, columnId))
-      .returning({ id: boardColumns.id });
-    if (updated.length === 0) throw new NotFoundError("This column no longer exists.");
+      .returning({ projectId: boardColumns.projectId });
+    if (!updated) throw new NotFoundError("This column no longer exists.");
+    return updated.projectId;
   });
+  publishBoardEvent(projectId, { type: "column.changed", actorId: scope.userId });
 }
 
 /** Moves a column one place to the left or right. */
@@ -196,18 +201,20 @@ export async function moveColumn(
   columnId: string,
   direction: "left" | "right",
 ): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const projectId = await withOrgContext(scope, async (tx) => {
     const column = await findColumn(tx, columnId);
     const columns = await columnsOf(tx, column.projectId, { lock: true });
     const index = columns.findIndex((c) => c.id === columnId);
     const target = direction === "left" ? index - 1 : index + 1;
-    if (target < 0 || target >= columns.length) return;
+    if (target < 0 || target >= columns.length) return null;
 
     // Moving right puts it after its right neighbour; moving left, after the one two to the left.
     const afterId =
       direction === "right" ? (columns[target]?.id ?? null) : (columns[target - 1]?.id ?? null);
     await place(tx, boardColumns, columns, columnId, afterId);
+    return column.projectId;
   });
+  if (projectId) publishBoardEvent(projectId, { type: "column.changed", actorId: scope.userId });
 }
 
 /**
@@ -219,7 +226,7 @@ export async function deleteColumn(
   columnId: string,
   moveTasksTo: string | null,
 ): Promise<void> {
-  await withOrgContext(scope, async (tx) => {
+  const projectId = await withOrgContext(scope, async (tx) => {
     const column = await findColumn(tx, columnId);
     const columns = await columnsOf(tx, column.projectId, { lock: true });
     if (columns.length <= 1) throw new ValidationError("A board needs at least one column.");
@@ -240,7 +247,9 @@ export async function deleteColumn(
       }
     }
     await tx.delete(boardColumns).where(eq(boardColumns.id, columnId));
+    return column.projectId;
   });
+  publishBoardEvent(projectId, { type: "column.changed", actorId: scope.userId });
 }
 
 export async function findColumn(tx: Transaction, columnId: string) {
