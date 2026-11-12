@@ -94,6 +94,13 @@ test("checklists, bulk actions, undo and My work", async ({ page }) => {
   await expect(page.getByRole("dialog").getByRole("textbox", { name: "Title" })).toHaveValue(
     "Pricing",
   );
+
+  // The Activity page has the whole history; the overview just the latest.
+  await page.keyboard.press("Escape");
+  await page.getByRole("link", { name: "Activity" }).click();
+  await expect(page.getByRole("heading", { name: "Activity", level: 1 })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Pat Power deleted Footer")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Pat Power created Hero in To do")).toBeVisible();
 });
 
 test("teammates see each other typing and react to comments", async ({ browser }) => {
