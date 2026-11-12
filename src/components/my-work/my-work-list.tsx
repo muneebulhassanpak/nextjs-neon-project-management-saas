@@ -102,7 +102,7 @@ export function MyWorkList({
                     <PriorityIcon priority={task.priority} />
                     <span
                       className={cn(
-                        "min-w-0 flex-1 truncate font-medium",
+                        "min-w-40 flex-1 truncate font-medium",
                         task.done && "text-muted-foreground line-through",
                       )}
                     >
