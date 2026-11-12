@@ -101,6 +101,16 @@ test("checklists, bulk actions, undo and My work", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Activity", level: 1 })).toBeVisible();
   await expect(page.getByRole("main").getByText("Pat Power deleted Footer")).toBeVisible();
   await expect(page.getByRole("main").getByText("Pat Power created Hero in To do")).toBeVisible();
+  // Filters: search narrows it down, and the URL keeps it.
+  await page.getByLabel("Search activity").fill("footer");
+  await expect(page).toHaveURL(/q=footer/);
+  await expect(page.getByRole("main").getByText("Pat Power created Hero in To do")).toBeHidden();
+  await expect(page.getByRole("main").getByText("Pat Power deleted Footer")).toBeVisible();
+  await page.getByRole("button", { name: /^Dates:/ }).click();
+  await page.getByRole("button", { name: "Yesterday" }).click();
+  await expect(page.getByText("Nothing matches these filters.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.getByRole("main").getByText("Pat Power created Hero in To do")).toBeVisible();
 
   // The overview sums it up: Hero is done (moved there today), Pricing is still open.
   await page.getByRole("link", { name: "Overview" }).click();
