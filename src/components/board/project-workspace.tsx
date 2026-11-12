@@ -8,17 +8,23 @@ import { ActivityFeed } from "@/components/activity/activity-feed";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Board } from "@/server/services/board";
 
-import { BoardContext, useBoard, useBoardContext, type BoardContextValue } from "./board-data";
+import {
+  BoardContext,
+  tasksByColumn,
+  useBoard,
+  useBoardContext,
+  type BoardContextValue,
+} from "./board-data";
 import { BoardView } from "./board-view";
 import { useDeferredDelete } from "./deferred-delete";
 import { FilterBar, filterTasks, NO_FILTERS, type TaskFilters } from "./filters";
 import { ListView } from "./list-view";
 import { BoardPresence } from "./presence";
 import { BulkBar, SelectionProvider, useSelectionState } from "./selection";
-import { TaskSheet } from "./task-sheet";
+import { TaskDialog } from "./task-dialog";
 import { TypingContext, useBoardChannel } from "./use-board-channel";
 
-/** The board, list and activity views of a project, with filters and the task sheet. */
+/** The board, list and activity views of a project, with filters and the task modal. */
 export function ProjectWorkspace({
   context,
   initialBoard,
@@ -49,6 +55,11 @@ function Workspace({ initialBoard }: { initialBoard: Board }) {
   const [view, setView] = useState("board");
   const tasks = filterTasks(board.tasks, filters, userId);
   const selection = useSelectionState(tasks.map((task) => task.id));
+  // Previous and Next in the open task follow the board: column by column, top to bottom.
+  const order = useMemo(
+    () => [...tasksByColumn(board, tasks).values()].flat().map((task) => task.id),
+    [board, tasks],
+  );
 
   // The open task lives in the URL (?task=), so notifications and shared links can open it.
   const openTaskId = useSearchParams().get("task");
@@ -100,9 +111,11 @@ function Workspace({ initialBoard }: { initialBoard: Board }) {
               empty="Changes to this project's tasks will show up here."
             />
           </TabsContent>
-          <TaskSheet
+          <TaskDialog
             taskId={openTaskId}
             board={board}
+            order={order}
+            onOpen={setOpenTaskId}
             viewers={channel.viewers.filter((viewer) => viewer.taskId === openTaskId)}
             onClose={() => {
               setOpenTaskId(null);

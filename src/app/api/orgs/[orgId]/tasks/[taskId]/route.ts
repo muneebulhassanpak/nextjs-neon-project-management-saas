@@ -4,7 +4,7 @@ import { requireApiOrgMember } from "@/server/auth/org";
 import { NotFoundError, withErrorHandling } from "@/server/errors";
 import { getTask } from "@/server/services/tasks";
 
-/** One task with its description, for the task sheet. */
+/** One task with its description, for the task modal. */
 export const GET = withErrorHandling(
   async (_request: Request, { params }: RouteContext<"/api/orgs/[orgId]/tasks/[taskId]">) => {
     const { orgId, taskId } = await params;
