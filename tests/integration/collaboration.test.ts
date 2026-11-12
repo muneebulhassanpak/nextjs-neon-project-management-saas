@@ -21,7 +21,12 @@ import {
 } from "@/server/actions/collaboration";
 import { setProjectArchivedAction, setProjectMembersAction } from "@/server/actions/projects";
 import type { ActionResult } from "@/server/errors";
-import { listActivity, type ActivityItem } from "@/server/services/activity";
+import {
+  LOG_PAGE_SIZE,
+  listActivity,
+  listActivityLog,
+  type ActivityItem,
+} from "@/server/services/activity";
 import { getBoard } from "@/server/services/board";
 import { listComments } from "@/server/services/comments";
 import { listNotifications } from "@/server/services/notifications";
@@ -173,6 +178,37 @@ describe("activity log", () => {
     expect(second.nextCursor).toBeNull();
     const ids = [...first.items, ...second.items].map((item) => item.id);
     expect(new Set(ids).size).toBe(26);
+  });
+
+  it("numbers pages for the Activity page, per project or across them", async () => {
+    const { org, owner, alice, todo, projectId } = await setup();
+    await projectFor(owner, org.id, "Secret");
+    actAs(owner);
+    for (let i = 0; i < 24; i++) {
+      unwrap(await createTaskAction({ orgId: org.id, columnId: todo, title: `Task ${i}` }));
+    }
+    const owners = { userId: owner.id, orgId: org.id };
+
+    // 24 tasks + "Fix login" + the project, and the Secret project across the organization.
+    const first = await listActivityLog(owners, { projectId });
+    expect(first).toMatchObject({ page: 1, pageCount: 2, total: 26 });
+    expect(first.items).toHaveLength(LOG_PAGE_SIZE);
+    const second = await listActivityLog(owners, { projectId, page: 2 });
+    expect(second.items).toHaveLength(1);
+    expect(second.items.map(sentence)).toEqual(["Owner created the project Website"]);
+    expect(await listActivityLog(owners)).toMatchObject({ total: 27 });
+
+    // Pages past the end show the last one; members don't count projects they aren't on.
+    expect(await listActivityLog(owners, { projectId, page: 9 })).toMatchObject({ page: 2 });
+    expect(await listActivityLog({ userId: alice.id, orgId: org.id })).toMatchObject({
+      total: 26,
+    });
+    expect(
+      await listActivityLog(
+        { userId: alice.id, orgId: org.id },
+        { projectId: "00000000-0000-4000-8000-000000000000" },
+      ),
+    ).toMatchObject({ items: [], page: 1, pageCount: 1, total: 0 });
   });
 });
 
@@ -368,6 +404,11 @@ describe("collaboration API routes", () => {
     );
     expect(activity.status).toBe(200);
     expect(await activity.json()).toMatchObject({ nextCursor: null });
+    const log = await activityRoute(
+      new Request(`http://test?projectId=${projectId}&page=1`),
+      ctx({ orgId: org.id }),
+    );
+    expect(await log.json()).toMatchObject({ page: 1, pageCount: 1 });
 
     const notifications = await notificationsRoute(
       new Request("http://test"),
@@ -385,6 +426,9 @@ describe("collaboration API routes", () => {
 
     expect(
       (await activityRoute(new Request("http://test?cursor=nope"), ctx({ orgId: org.id }))).status,
+    ).toBe(422);
+    expect(
+      (await activityRoute(new Request("http://test?page=0"), ctx({ orgId: org.id }))).status,
     ).toBe(422);
     expect(
       (await commentsRoute(new Request("http://test"), ctx({ orgId: org.id, taskId: "nope" })))
