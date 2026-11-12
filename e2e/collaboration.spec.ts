@@ -42,7 +42,7 @@ test("a mention notifies a teammate, and changes show up in the activity feed", 
   await expect(mate).toHaveURL(/\?task=/);
   const opened = mate.getByRole("dialog");
   await expect(opened.getByText("can you review this?")).toBeVisible();
-  // The open sheet hides the page behind it from assistive tech, so close it to check the bell.
+  // The open task hides the page behind it from assistive tech, so close it to check the bell.
   await mate.keyboard.press("Escape");
   await expect(mate.getByRole("button", { name: "Notifications", exact: true })).toBeVisible();
 });
