@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderKanban, LayoutDashboard, Settings, Users } from "lucide-react";
+import { FolderKanban, LayoutDashboard, ListTodo, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -35,6 +35,10 @@ export function AppSidebar({
 
   const nav = [
     { href: base, label: "Overview", icon: LayoutDashboard, exact: true },
+    // Clients aren't assigned tasks.
+    ...(current.role === "client"
+      ? []
+      : [{ href: `${base}/my-work`, label: "My work", icon: ListTodo, exact: true }]),
     { href: `${base}/projects`, label: "Projects", icon: FolderKanban, exact: false },
     { href: `${base}/settings/members`, label: "Members", icon: Users, exact: false },
     ...(canManage
