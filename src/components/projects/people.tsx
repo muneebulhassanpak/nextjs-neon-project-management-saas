@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { avatarTone } from "@/lib/avatar-tone";
 import { initials } from "@/lib/initials";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,9 @@ export function PersonAvatar({
   return (
     <Avatar size={size} className={className}>
       {person.image && <AvatarImage src={person.image} alt="" />}
-      <AvatarFallback className="text-[10px] font-medium">{initials(person.name)}</AvatarFallback>
+      <AvatarFallback className={cn("text-[10px] font-medium", avatarTone(person.id))}>
+        {initials(person.name)}
+      </AvatarFallback>
     </Avatar>
   );
 }
