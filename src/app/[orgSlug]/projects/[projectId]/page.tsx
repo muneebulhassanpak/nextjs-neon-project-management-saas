@@ -100,6 +100,7 @@ export default async function ProjectPage({ params }: Props) {
         context={{
           orgId: org.id,
           projectId: project.id,
+          projectName: project.name,
           userId: user.id,
           userName: user.name,
           role,

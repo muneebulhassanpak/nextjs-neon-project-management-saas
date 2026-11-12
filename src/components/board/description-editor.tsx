@@ -26,7 +26,7 @@ export function DescriptionEditor({
 }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastSaved = useRef(JSON.stringify(value));
-  // The latest content, so edits still waiting for the timer are saved when the sheet closes.
+  // The latest content, so edits still waiting for the timer are saved when the task closes.
   const latest = useRef<TaskDescription>(value);
   const onSaveRef = useRef(onSave);
   useEffect(() => {
@@ -75,7 +75,7 @@ export function DescriptionEditor({
     editor.commands.setContent((value as JSONContent | null) ?? "", { emitUpdate: false });
   }, [editor, value]);
 
-  // Save edits still waiting for the timer when the sheet closes.
+  // Save edits still waiting for the timer when the task closes.
   useEffect(
     () => () => {
       clearTimeout(timer.current);

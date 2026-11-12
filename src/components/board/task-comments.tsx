@@ -64,7 +64,7 @@ type CommentJson = Omit<CommentItem, "createdAt" | "editedAt"> & {
 
 export const commentsKey = (taskId: string) => ["comments", taskId] as const;
 
-/** Marks an element whose Escape key is handled locally, so the task sheet stays open. */
+/** Marks an element whose Escape key is handled locally, so the task modal stays open. */
 export const CAPTURES_ESCAPE = "data-captures-escape";
 
 export function useComments(taskId: string) {

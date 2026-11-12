@@ -19,6 +19,7 @@ export type TaskDetailJson = Omit<TaskDetail, "createdAt" | "updatedAt"> & {
 export interface BoardContextValue {
   orgId: string;
   projectId: string;
+  projectName: string;
   userId: string;
   userName: string;
   role: Role;
