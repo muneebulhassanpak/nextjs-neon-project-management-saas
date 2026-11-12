@@ -38,6 +38,14 @@ test("checklists, bulk actions, undo and My work", async ({ page }) => {
   }
   await sheet.getByRole("checkbox", { name: "Wireframe" }).click();
   await expect(sheet.getByText("1 of 2 done")).toBeVisible();
+  // Step through the column's tasks without closing: the button, then k back.
+  const title = sheet.getByRole("textbox", { name: "Title" });
+  await sheet.getByRole("button", { name: "Next task" }).click();
+  await expect(title).toHaveValue("Pricing");
+  await expect(sheet.getByText("2 of 3")).toBeVisible();
+  await page.keyboard.press("k");
+  await expect(title).toHaveValue("Hero");
+  await expect(sheet.getByRole("button", { name: "Previous task" })).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(card(page, "Hero")).toContainText("1/2");
 
