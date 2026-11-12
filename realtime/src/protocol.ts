@@ -34,7 +34,9 @@ export type BoardEvent =
       actorId: string;
     }
   | { type: "comment.changed"; taskId: string; actorId: string }
-  | { type: "column.changed"; actorId: string };
+  | { type: "column.changed"; actorId: string }
+  /** Several tasks changed at once (bulk actions). */
+  | { type: "board.changed"; actorId: string };
 
 export interface PresenceEntry extends Viewer {
   /** One per open tab, so the same person can appear twice. */
@@ -45,13 +47,16 @@ export interface PresenceEntry extends Viewer {
 
 /** Room → browser. */
 export type ServerMessage =
-  { type: "event"; event: BoardEvent } | { type: "presence"; viewers: PresenceEntry[] };
+  | { type: "event"; event: BoardEvent }
+  | { type: "presence"; viewers: PresenceEntry[] }
+  /** Someone is writing a comment on a task. Sent to everyone but them. */
+  | { type: "typing"; viewer: Viewer; taskId: string };
 
 /** Browser → room. (Keep-alive pings are the plain string "ping", answered with "pong".) */
-export interface ClientMessage {
-  type: "viewing";
-  taskId: string | null;
-}
+export type ClientMessage =
+  | { type: "viewing"; taskId: string | null }
+  /** Sent at most every few seconds while typing a comment. */
+  | { type: "typing"; taskId: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -102,7 +107,8 @@ export function parseBoardEvent(value: unknown): BoardEvent | null {
         ? { type: value.type, taskId: value.taskId, actorId: value.actorId }
         : null;
     case "column.changed":
-      return { type: "column.changed", actorId: value.actorId };
+    case "board.changed":
+      return { type: value.type, actorId: value.actorId };
     default:
       return null;
   }
@@ -116,10 +122,15 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   } catch {
     return null;
   }
-  if (!isRecord(value) || value.type !== "viewing") return null;
+  if (!isRecord(value)) return null;
   const { taskId } = value;
-  if (taskId === null) return { type: "viewing", taskId: null };
-  return typeof taskId === "string" && isRoomId(taskId) ? { type: "viewing", taskId } : null;
+  const validTask = typeof taskId === "string" && isRoomId(taskId);
+  if (value.type === "viewing") {
+    if (taskId === null) return { type: "viewing", taskId: null };
+    return validTask ? { type: "viewing", taskId } : null;
+  }
+  if (value.type === "typing") return validTask ? { type: "typing", taskId } : null;
+  return null;
 }
 
 export function parseServerMessage(raw: string): ServerMessage | null {
@@ -136,6 +147,16 @@ export function parseServerMessage(raw: string): ServerMessage | null {
   }
   if (value.type === "presence" && Array.isArray(value.viewers)) {
     return { type: "presence", viewers: value.viewers.filter(isPresenceEntry) };
+  }
+  const { viewer, taskId } = value;
+  if (
+    value.type === "typing" &&
+    typeof taskId === "string" &&
+    isRecord(viewer) &&
+    isViewer(viewer)
+  ) {
+    const { id, name, image } = viewer as unknown as Viewer;
+    return { type: "typing", viewer: { id, name, image }, taskId };
   }
   return null;
 }
