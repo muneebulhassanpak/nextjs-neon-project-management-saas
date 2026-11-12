@@ -9,6 +9,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- The overview is now a dashboard: open tasks, due this week, overdue and done this week; each project's progress; what's due soon; recent activity and the team.
+- Project cards show progress (done of total, with a bar), what's overdue and the next due date.
+- Each person gets their own avatar colour, and new labels get colours that stand apart.
+- Dates ("today", overdue, due this week) follow the viewer's time zone.
+
 - Checklists inside tasks: add, tick off, rename and remove steps. The card shows progress (3/5).
 - Bulk actions: select tasks with their checkbox, Shift- or Cmd-click, or `x`, then move, assign, prioritise, label or delete them together from a bar at the bottom. Works in the list view too, with select all.
 - Undo for deletes: deleting tasks shows an Undo toast for 5 seconds before anything is removed.
@@ -72,3 +77,4 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - Neon connection strings use `sslmode=verify-full`, which silences the `pg` SSL warning and keeps strict certificate checks.
 - A hydration warning on the board (drag-and-drop ids differed between the server and the browser).
+- A hydration warning on phones: the sidebar rendered its mobile drawer before it had hydrated.
