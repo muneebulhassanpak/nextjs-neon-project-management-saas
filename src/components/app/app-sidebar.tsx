@@ -47,14 +47,14 @@ export function AppSidebar({
   ];
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader>
         <OrgSwitcher current={current} orgs={orgs} />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {nav.map((item) => {
                 const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
                 return (
