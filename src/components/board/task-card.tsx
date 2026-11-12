@@ -131,6 +131,8 @@ export function TaskCard({
         data-selected={isSelected || undefined}
         className={cn(
           cardClass,
+          // Room for the select checkbox in the top-right corner.
+          canEdit && "[&>p:first-child]:pr-6",
           "cursor-pointer transition-colors hover:border-foreground/20 focus-visible:ring-3 focus-visible:ring-ring/50",
           isSelected &&
             "border-primary/60 bg-primary/5 ring-1 ring-primary/40 hover:border-primary/60",
@@ -150,14 +152,15 @@ export function TaskCard({
             toggle(task.id);
           }}
           className={cn(
-            "absolute -top-1.5 -left-1.5 flex size-5 items-center justify-center rounded-md border bg-background shadow-xs transition-opacity outline-none focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50",
+            // Inside the card: the column scrolls, so anything poking out of the card is clipped.
+            "absolute top-2.5 right-2.5 flex size-4.5 items-center justify-center rounded-[5px] border shadow-xs transition-[opacity,border-color] outline-none focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50",
             isSelected
               ? "border-primary bg-primary text-primary-foreground opacity-100"
-              : "border-foreground/25 bg-card text-transparent opacity-0 group-hover/card:opacity-100 hover:border-foreground/50",
+              : "border-foreground/35 bg-background text-transparent opacity-0 group-hover/card:opacity-100 hover:border-foreground/70 dark:bg-input/40",
             selecting && "opacity-100",
           )}
         >
-          <Check className="size-3.5" aria-hidden />
+          <Check className="size-3" strokeWidth={3} aria-hidden />
         </button>
       )}
     </div>
