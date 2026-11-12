@@ -1,10 +1,11 @@
 import "server-only";
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 
 import { placeAfter, positionAtEnd, rebalance, type Positioned } from "@/lib/positions";
 import type { TaskPriority } from "@/lib/projects";
 import {
   boardColumns,
+  checklistItems,
   labels,
   member,
   projectMembers,
@@ -43,6 +44,8 @@ export interface BoardTask {
   labels: BoardLabel[];
   hasDescription: boolean;
   createdBy: string | null;
+  /** Ticked and total checklist items, or null without a checklist. */
+  checklist: { done: number; total: number } | null;
 }
 
 export interface Board {
@@ -103,6 +106,27 @@ export async function getBoard(scope: Scope, projectId: string): Promise<Board> 
               ),
             )
             .orderBy(asc(labels.name));
+    const checklistRows =
+      rows.length === 0
+        ? []
+        : await tx
+            .select({
+              taskId: checklistItems.taskId,
+              total: count(),
+              done: count(sql`case when ${checklistItems.done} then 1 end`),
+            })
+            .from(checklistItems)
+            .where(
+              inArray(
+                checklistItems.taskId,
+                rows.map((r) => r.id),
+              ),
+            )
+            .groupBy(checklistItems.taskId);
+    const checklistByTask = new Map(
+      checklistRows.map(({ taskId, done, total }) => [taskId, { done, total }]),
+    );
+
     const labelsByTask = new Map<string, BoardLabel[]>();
     for (const { taskId, ...label } of labelRows) {
       labelsByTask.set(taskId, [...(labelsByTask.get(taskId) ?? []), label]);
@@ -123,6 +147,7 @@ export async function getBoard(scope: Scope, projectId: string): Promise<Board> 
           ? { id: row.assigneeId, name: row.assigneeName ?? "", image: row.assigneeImage }
           : null,
         labels: labelsByTask.get(row.id) ?? [],
+        checklist: checklistByTask.get(row.id) ?? null,
       })),
       people: await assignablePeople(tx, scope.orgId, projectId),
       labels: await tx

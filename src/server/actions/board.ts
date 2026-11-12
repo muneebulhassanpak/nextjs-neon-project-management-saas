@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import {
+  checklistItemSchema,
   columnNameSchema,
   dueDateSchema,
   labelNameSchema,
@@ -15,8 +16,16 @@ import { ForbiddenError } from "@/server/errors";
 import type { ActionResult } from "@/server/errors";
 import type { BoardColumn, BoardLabel } from "@/server/services/board";
 import { createColumn, deleteColumn, moveColumn, renameColumn } from "@/server/services/board";
+import {
+  addChecklistItem,
+  deleteChecklistItem,
+  updateChecklistItem,
+  type ChecklistItem,
+} from "@/server/services/checklists";
 import { createLabel } from "@/server/services/labels";
 import {
+  bulkChangeTasks,
+  BULK_LIMIT,
   createTask,
   deleteTask,
   moveTask,
@@ -154,5 +163,61 @@ export async function createLabelAction(
 ): Promise<ActionResult<BoardLabel>> {
   return action(createLabelSchema, async ({ orgId, name }) =>
     createLabel(await editorScope(orgId), { name }),
+  )(input);
+}
+
+// Checklists
+
+const addChecklistSchema = z.object({ orgId, taskId: id, title: checklistItemSchema });
+export async function addChecklistItemAction(
+  input: z.input<typeof addChecklistSchema>,
+): Promise<ActionResult<ChecklistItem>> {
+  return action(addChecklistSchema, async ({ orgId, taskId, title }) =>
+    addChecklistItem(await editorScope(orgId), taskId, title),
+  )(input);
+}
+
+const updateChecklistSchema = z.object({
+  orgId,
+  itemId: id,
+  changes: z.object({ title: checklistItemSchema, done: z.boolean() }).partial(),
+});
+export async function updateChecklistItemAction(
+  input: z.input<typeof updateChecklistSchema>,
+): Promise<ActionResult<null>> {
+  return action(updateChecklistSchema, async ({ orgId, itemId, changes }) => {
+    await updateChecklistItem(await editorScope(orgId), itemId, changes);
+    return null;
+  })(input);
+}
+
+const deleteChecklistSchema = z.object({ orgId, itemId: id });
+export async function deleteChecklistItemAction(
+  input: z.input<typeof deleteChecklistSchema>,
+): Promise<ActionResult<null>> {
+  return action(deleteChecklistSchema, async ({ orgId, itemId }) => {
+    await deleteChecklistItem(await editorScope(orgId), itemId);
+    return null;
+  })(input);
+}
+
+// Bulk actions
+
+const bulkSchema = z.object({
+  orgId,
+  taskIds: z.array(id).min(1).max(BULK_LIMIT),
+  change: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("move"), columnId: id }),
+    z.object({ kind: z.literal("assign"), assigneeId: z.string().min(1).nullable() }),
+    z.object({ kind: z.literal("priority"), priority: z.enum(TASK_PRIORITIES) }),
+    z.object({ kind: z.literal("label"), labelId: id }),
+    z.object({ kind: z.literal("delete") }),
+  ]),
+});
+export async function bulkChangeTasksAction(
+  input: z.input<typeof bulkSchema>,
+): Promise<ActionResult<{ changed: number }>> {
+  return action(bulkSchema, async ({ orgId, taskIds, change }) =>
+    bulkChangeTasks(await editorScope(orgId), taskIds, change),
   )(input);
 }
