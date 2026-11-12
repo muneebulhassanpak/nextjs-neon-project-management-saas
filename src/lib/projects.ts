@@ -63,6 +63,12 @@ export const taskTitleSchema = z
   .min(1, "Give the task a title.")
   .max(200, "Use at most 200 characters.");
 
+export const checklistItemSchema = z
+  .string()
+  .trim()
+  .min(1, "Write the item first.")
+  .max(200, "Keep checklist items under 200 characters.");
+
 export const labelNameSchema = z
   .string()
   .trim()

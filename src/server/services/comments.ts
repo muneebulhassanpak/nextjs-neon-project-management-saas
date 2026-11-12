@@ -1,8 +1,9 @@
 import "server-only";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { extractMentions } from "@/lib/mentions";
-import { comments, tasks, user } from "@/server/db/schema";
+import { REACTIONS, type Reaction, type ReactionSummary } from "@/lib/reactions";
+import { commentReactions, comments, tasks, user } from "@/server/db/schema";
 import { withOrgContext, type Transaction } from "@/server/db/tenant";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { publishBoardEvent } from "@/server/realtime";
@@ -20,12 +21,13 @@ export interface CommentItem {
   createdAt: Date;
   editedAt: Date | null;
   author: Person | null;
+  reactions: ReactionSummary[];
 }
 
-/** A task's comments, oldest first. */
+/** A task's comments, oldest first, with their reactions. */
 export async function listComments(scope: Scope, taskId: string): Promise<CommentItem[]> {
-  const rows = await withOrgContext(scope, (tx) =>
-    tx
+  const { rows, reactionRows } = await withOrgContext(scope, async (tx) => {
+    const rows = await tx
       .select({
         id: comments.id,
         body: comments.body,
@@ -38,12 +40,89 @@ export async function listComments(scope: Scope, taskId: string): Promise<Commen
       .from(comments)
       .leftJoin(user, eq(user.id, comments.authorId))
       .where(eq(comments.taskId, taskId))
-      .orderBy(asc(comments.createdAt), asc(comments.id)),
-  );
+      .orderBy(asc(comments.createdAt), asc(comments.id));
+    const reactionRows =
+      rows.length === 0
+        ? []
+        : await tx
+            .select({
+              commentId: commentReactions.commentId,
+              emoji: commentReactions.emoji,
+              userId: commentReactions.userId,
+              name: user.name,
+            })
+            .from(commentReactions)
+            .innerJoin(user, eq(user.id, commentReactions.userId))
+            .where(
+              inArray(
+                commentReactions.commentId,
+                rows.map((row) => row.id),
+              ),
+            )
+            .orderBy(asc(commentReactions.createdAt));
+    return { rows, reactionRows };
+  });
+
+  const reactionsByComment = new Map<string, ReactionSummary[]>();
+  for (const row of reactionRows) {
+    const list = reactionsByComment.get(row.commentId) ?? [];
+    let summary = list.find((r) => r.emoji === row.emoji);
+    if (!summary) {
+      summary = { emoji: row.emoji, count: 0, mine: false, people: [] };
+      list.push(summary);
+    }
+    summary.count += 1;
+    summary.people.push(row.name);
+    if (row.userId === scope.userId) summary.mine = true;
+    reactionsByComment.set(row.commentId, list);
+  }
   return rows.map(({ authorId, authorName, authorImage, ...comment }) => ({
     ...comment,
     author: authorId ? { id: authorId, name: authorName ?? "", image: authorImage } : null,
+    reactions: (reactionsByComment.get(comment.id) ?? []).sort(
+      (a, b) => REACTIONS.indexOf(a.emoji) - REACTIONS.indexOf(b.emoji),
+    ),
   }));
+}
+
+/** Adds the user's reaction to a comment, or takes it back if they'd already left it. */
+export async function toggleReaction(
+  scope: Scope,
+  commentId: string,
+  emoji: Reaction,
+): Promise<{ reacted: boolean }> {
+  const { task, reacted } = await withOrgContext(scope, async (tx) => {
+    const [comment] = await tx
+      .select({ taskId: comments.taskId })
+      .from(comments)
+      .where(eq(comments.id, commentId))
+      .limit(1);
+    if (!comment) throw new NotFoundError("This comment no longer exists.");
+    const task = await findTask(tx, comment.taskId);
+    const removed = await tx
+      .delete(commentReactions)
+      .where(
+        and(
+          eq(commentReactions.commentId, commentId),
+          eq(commentReactions.userId, scope.userId),
+          eq(commentReactions.emoji, emoji),
+        ),
+      )
+      .returning({ emoji: commentReactions.emoji });
+    if (removed.length > 0) return { task, reacted: false };
+    await tx
+      .insert(commentReactions)
+      .values({ commentId, userId: scope.userId, orgId: scope.orgId, emoji })
+      // A double click can race; the second insert is then a no-op.
+      .onConflictDoNothing();
+    return { task, reacted: true };
+  });
+  publishBoardEvent(task.projectId, {
+    type: "comment.changed",
+    taskId: task.id,
+    actorId: scope.userId,
+  });
+  return { reacted };
 }
 
 /** Adds a comment, logs it and notifies the people mentioned in it. */

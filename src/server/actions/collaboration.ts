@@ -3,9 +3,10 @@
 import { z } from "zod";
 
 import { commentBodySchema } from "@/lib/mentions";
+import { REACTIONS } from "@/lib/reactions";
 import { requireOrgMember } from "@/server/auth/org";
 import type { ActionResult } from "@/server/errors";
-import { addComment, deleteComment, editComment } from "@/server/services/comments";
+import { addComment, deleteComment, editComment, toggleReaction } from "@/server/services/comments";
 import { markNotificationsRead } from "@/server/services/notifications";
 
 import { runAction } from "./run-action";
@@ -52,6 +53,16 @@ export async function deleteCommentAction(
     const { orgId, commentId } = deleteSchema.parse(input);
     await deleteComment(await memberScope(orgId), commentId);
     return null;
+  });
+}
+
+const reactSchema = z.object({ orgId, commentId: id, emoji: z.enum(REACTIONS) });
+export async function toggleReactionAction(
+  input: z.input<typeof reactSchema>,
+): Promise<ActionResult<{ reacted: boolean }>> {
+  return runAction(async () => {
+    const { orgId, commentId, emoji } = reactSchema.parse(input);
+    return toggleReaction(await memberScope(orgId), commentId, emoji);
   });
 }
 
