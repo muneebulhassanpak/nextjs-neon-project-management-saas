@@ -1,9 +1,13 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { History } from "lucide-react";
+import { History, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
+import { PersonAvatar, type PersonView } from "@/components/projects/people";
+import { Button } from "@/components/ui/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   Pagination,
   PaginationContent,
@@ -22,37 +26,71 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ACTIVITY_KIND_LABELS,
+  ACTIVITY_KINDS,
+  isActivityKind,
+  type ActivityKind,
+} from "@/lib/activity";
 import { pageWindow } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 import type { ActivityLogPage } from "@/server/services/activity";
 
 import { ActivityEntry, type ActivityJson } from "./activity-feed";
+import { DateRangeFilter } from "./date-range-filter";
 
 type ActivityLogPageJson = Omit<ActivityLogPage, "items"> & { items: ActivityJson[] };
 
 const ALL = "all";
 
-/** The whole activity log, a page at a time, grouped by day, optionally for one project. */
+/** The Activity page's filters, as they appear in its URL. */
+export interface LogFilters {
+  projectId?: string;
+  actorId?: string;
+  kind?: ActivityKind;
+  /** YYYY-MM-DD, inclusive, in the viewer's time zone. */
+  from?: string;
+  to?: string;
+  q?: string;
+}
+
+const URL_KEYS = {
+  projectId: "project",
+  actorId: "person",
+  kind: "type",
+  from: "from",
+  to: "to",
+  q: "q",
+} as const satisfies Record<keyof LogFilters, string>;
+
+/** The whole activity log, a page at a time, grouped by day, with filters kept in the URL. */
 export function ActivityLog({
   orgId,
   orgSlug,
   page,
-  projectId,
+  filters,
   projects,
+  people,
 }: {
   orgId: string;
   orgSlug: string;
   page: number;
-  projectId?: string;
+  filters: LogFilters;
   projects: { id: string; name: string }[];
+  people: PersonView[];
 }) {
   const router = useRouter();
   // Under "activity" so live board events refresh it like the other feeds.
   const query = useQuery({
-    queryKey: ["activity", orgId, "log", page, projectId ?? null],
+    queryKey: ["activity", orgId, "log", page, filters],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page) });
-      if (projectId) params.set("projectId", projectId);
+      if (filters.projectId) params.set("projectId", filters.projectId);
+      if (filters.actorId) params.set("actorId", filters.actorId);
+      if (filters.kind) params.set("kind", filters.kind);
+      if (filters.from) params.set("from", filters.from);
+      if (filters.to) params.set("to", filters.to);
+      if (filters.q) params.set("q", filters.q);
       const response = await fetch(`/api/orgs/${orgId}/activity?${params}`);
       if (!response.ok) throw new Error("Couldn't load the activity.");
       return (await response.json()) as ActivityLogPageJson;
@@ -60,45 +98,165 @@ export function ActivityLog({
     placeholderData: keepPreviousData,
   });
 
-  const href = (to: number, project = projectId) => {
+  const href = (to: number, next: LogFilters = filters) => {
     const params = new URLSearchParams();
-    if (project) params.set("project", project);
+    for (const [key, name] of Object.entries(URL_KEYS) as [keyof LogFilters, string][]) {
+      const value = next[key];
+      if (value) params.set(name, value);
+    }
     if (to > 1) params.set("page", String(to));
     const search = params.toString();
     return `/${orgSlug}/activity${search ? `?${search}` : ""}`;
   };
+  // A new filter starts again from the first page.
+  const filter = (patch: Partial<LogFilters>) => {
+    router.push(href(1, { ...filters, ...patch }), { scroll: false });
+  };
+
+  const [search, setSearch] = useState(filters.q ?? "");
+  // Back and forward change the URL's search; the box follows it.
+  const [urlSearch, setUrlSearch] = useState(filters.q);
+  if (urlSearch !== filters.q) {
+    setUrlSearch(filters.q);
+    if (search.trim() !== (filters.q ?? "")) setSearch(filters.q ?? "");
+  }
+  // Search as you type, once typing pauses, on top of the filters at that moment.
+  const latest = useRef(filters);
+  useEffect(() => {
+    latest.current = filters;
+  });
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+    },
+    [],
+  );
+  const type = (text: string) => {
+    setSearch(text);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const q = text.trim();
+      if (q === (latest.current.q ?? "")) return;
+      router.replace(href(1, { ...latest.current, q: q || undefined }), { scroll: false });
+    }, 300);
+  };
+  const clear = () => {
+    clearTimeout(timer.current);
+    setSearch("");
+    router.push(href(1, {}), { scroll: false });
+  };
+
+  const filtering = Object.values(filters).some(Boolean);
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
-          {query.data
-            ? query.data.total === 0
-              ? "No activity"
-              : `${query.data.total} ${query.data.total === 1 ? "entry" : "entries"}`
-            : " "}
-        </p>
-        {projects.length > 0 && (
+      <div className="grid gap-3">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="search"
+          aria-label="Filter activity"
+        >
+          <InputGroup className="h-8 w-full sm:w-64">
+            <InputGroupAddon>
+              <Search aria-hidden />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              placeholder="Search tasks, projects, people"
+              aria-label="Search activity"
+              onChange={(event) => {
+                type(event.target.value);
+              }}
+            />
+          </InputGroup>
+
+          <DateRangeFilter
+            from={filters.from}
+            to={filters.to}
+            onChange={(from, to) => {
+              filter({ from, to });
+            }}
+          />
+
+          {people.length > 0 && (
+            <Select
+              value={filters.actorId ?? ALL}
+              onValueChange={(value) => {
+                filter({ actorId: value === ALL ? undefined : value });
+              }}
+            >
+              <SelectTrigger className="min-w-36" aria-label="Person">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Anyone</SelectItem>
+                <SelectSeparator />
+                {people.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    <PersonAvatar person={person} className="size-5" />
+                    {person.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {projects.length > 0 && (
+            <Select
+              value={filters.projectId ?? ALL}
+              onValueChange={(value) => {
+                filter({ projectId: value === ALL ? undefined : value });
+              }}
+            >
+              <SelectTrigger className="min-w-36" aria-label="Project">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All projects</SelectItem>
+                <SelectSeparator />
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select
-            value={projectId ?? ALL}
+            value={filters.kind ?? ALL}
             onValueChange={(value) => {
-              router.push(href(1, value === ALL ? undefined : value));
+              filter({ kind: isActivityKind(value) ? value : undefined });
             }}
           >
-            <SelectTrigger className="w-56" aria-label="Project">
+            <SelectTrigger className="min-w-32" aria-label="Type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All projects</SelectItem>
+              <SelectItem value={ALL}>All changes</SelectItem>
               <SelectSeparator />
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
+              {ACTIVITY_KINDS.map((kind) => (
+                <SelectItem key={kind} value={kind}>
+                  {ACTIVITY_KIND_LABELS[kind]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
+
+          {filtering && (
+            <Button variant="ghost" size="sm" onClick={clear}>
+              <X aria-hidden /> Clear
+            </Button>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
+          {query.data
+            ? query.data.total === 0
+              ? "No activity"
+              : `${query.data.total.toLocaleString("en-US")} ${query.data.total === 1 ? "entry" : "entries"}`
+            : "\u00a0"}
+        </p>
       </div>
 
       {query.isPending ? (
@@ -118,10 +276,15 @@ export function ActivityLog({
             <History className="size-5" aria-hidden />
           </div>
           <p className="max-w-sm text-sm text-muted-foreground">
-            {projectId
-              ? "Nothing has happened in this project yet."
+            {filtering
+              ? "Nothing matches these filters."
               : "Once people start working, their changes show up here."}
           </p>
+          {filtering && (
+            <Button variant="outline" size="sm" onClick={clear}>
+              Clear filters
+            </Button>
+          )}
         </div>
       ) : (
         <div

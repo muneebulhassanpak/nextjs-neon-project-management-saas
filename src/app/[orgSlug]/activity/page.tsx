@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 
-import { ActivityLog } from "@/components/activity/activity-log";
+import { ActivityLog, type LogFilters } from "@/components/activity/activity-log";
 import { PageHeader } from "@/components/app/page-header";
+import { isActivityKind } from "@/lib/activity";
+import { isIsoDate } from "@/lib/dates";
 import { requireOrg } from "@/server/auth/org";
+import { listMembers } from "@/server/services/members";
 import { listProjects } from "@/server/services/projects";
 
 import type { Metadata } from "next";
@@ -18,9 +21,30 @@ export default async function ActivityPage({
   if (role === "client") notFound();
 
   const query = await searchParams;
-  const projects = await listProjects({ userId: user.id, orgId: org.id });
-  const project = typeof query.project === "string" ? query.project : undefined;
-  const page = Number(typeof query.page === "string" ? query.page : 1);
+  const param = (name: string) => {
+    const value = query[name];
+    return typeof value === "string" && value !== "" ? value : undefined;
+  };
+  const [projects, members] = await Promise.all([
+    listProjects({ userId: user.id, orgId: org.id }),
+    listMembers(user.id, org.id),
+  ]);
+  const page = Number(param("page") ?? 1);
+  // Anything unrecognised in the URL is ignored rather than an error.
+  const project = param("project");
+  const person = param("person");
+  const kind = param("type");
+  const from = param("from");
+  const to = param("to");
+  const filters: LogFilters = {
+    // Only projects the user can see; anything else falls back to all of them.
+    projectId: projects.some((p) => p.id === project) ? project : undefined,
+    actorId: members.some((m) => m.userId === person) ? person : undefined,
+    kind: kind && isActivityKind(kind) ? kind : undefined,
+    from: from && isIsoDate(from) ? from : undefined,
+    to: to && isIsoDate(to) ? to : undefined,
+    q: param("q")?.slice(0, 200),
+  };
 
   return (
     <div className="grid max-w-4xl gap-6">
@@ -36,9 +60,9 @@ export default async function ActivityPage({
         orgId={org.id}
         orgSlug={org.slug}
         page={Number.isInteger(page) && page >= 1 ? page : 1}
-        // Only projects the user can see; anything else falls back to all of them.
-        projectId={projects.some((p) => p.id === project) ? project : undefined}
+        filters={filters}
         projects={projects.map(({ id, name }) => ({ id, name }))}
+        people={members.map(({ userId, name, image }) => ({ id: userId, name, image }))}
       />
     </div>
   );
