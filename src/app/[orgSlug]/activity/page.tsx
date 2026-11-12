@@ -47,7 +47,7 @@ export default async function ActivityPage({
   };
 
   return (
-    <div className="grid max-w-4xl gap-6">
+    <div className="grid gap-6">
       <PageHeader
         title="Activity"
         description={
