@@ -1,9 +1,11 @@
-import { ListTodo } from "lucide-react";
+import { CalendarDays, CircleAlert } from "lucide-react";
 import Link from "next/link";
 
+import { formatDueDate } from "@/components/board/task-meta";
 import type { ProjectStatus } from "@/lib/projects";
 
 import { AvatarStack, type PersonView } from "./people";
+import { ProgressMeter } from "./progress-meter";
 import { StatusBadge } from "./status-badge";
 
 export interface ProjectCardView {
@@ -12,11 +14,12 @@ export interface ProjectCardView {
   description: string | null;
   status: ProjectStatus;
   archived: boolean;
-  taskCount: number;
   members: PersonView[];
+  progress: { total: number; done: number; overdue: number; nextDue: string | null };
 }
 
 export function ProjectCard({ href, project }: { href: string; project: ProjectCardView }) {
+  const { progress } = project;
   return (
     <Link
       href={href}
@@ -31,11 +34,39 @@ export function ProjectCard({ href, project }: { href: string; project: ProjectC
       <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
         {project.description ?? "No description."}
       </p>
-      <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <ListTodo className="size-3.5" aria-hidden />
-          {project.taskCount} {project.taskCount === 1 ? "task" : "tasks"}
-        </span>
+      <div className="mt-auto grid gap-2">
+        <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+          <span>
+            {progress.total === 0
+              ? "No tasks yet"
+              : `${progress.done} of ${progress.total} ${progress.total === 1 ? "task" : "tasks"} done`}
+          </span>
+          {progress.total > 0 && (
+            <span className="font-medium text-foreground tabular-nums">
+              {Math.round((progress.done / progress.total) * 100)}%
+            </span>
+          )}
+        </div>
+        <ProgressMeter
+          done={progress.done}
+          total={progress.total}
+          label={`${project.name} progress`}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        {progress.overdue > 0 ? (
+          <span className="inline-flex items-center gap-1.5 font-medium text-red-600 dark:text-red-400">
+            <CircleAlert className="size-3.5" aria-hidden />
+            {progress.overdue} overdue
+          </span>
+        ) : progress.nextDue ? (
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays className="size-3.5" aria-hidden />
+            Next due {formatDueDate(progress.nextDue)}
+          </span>
+        ) : (
+          <span>Nothing due</span>
+        )}
         <AvatarStack people={project.members} />
       </div>
     </Link>

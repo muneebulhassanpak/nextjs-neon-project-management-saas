@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { requireOrg } from "@/server/auth/org";
 import { listMembers } from "@/server/services/members";
 import { listProjects } from "@/server/services/projects";
+import { viewerToday } from "@/server/today";
 
 import type { Metadata } from "next";
 
@@ -23,7 +24,7 @@ export default async function ProjectsPage({
   const canManage = canManageProjects(role);
   const scope = { userId: user.id, orgId: org.id };
   const [projects, members] = await Promise.all([
-    listProjects(scope, { archived }),
+    listProjects(scope, { archived, today: await viewerToday() }),
     canManage ? listMembers(user.id, org.id) : Promise.resolve([]),
   ]);
   const assignable = members
